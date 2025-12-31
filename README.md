@@ -18,4 +18,6 @@ MCP Server para consultas inteligentes em dados de frotas via Supabase + Redis.
 - `feature/*`: Features em desenvolvimento
 
 ## Documentação
-Ver pasta `/docs` para documentação completa.
+Ver pasta `/docs` para documentação completa, incluindo:
+- [Estratégia de Branches e Versionamento](/docs/git/)
+- [Configuração de Variáveis de Ambiente](/docs/setup/environment-variables.md)
