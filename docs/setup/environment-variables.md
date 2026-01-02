@@ -1,37 +1,71 @@
 # Variáveis de Ambiente - FleetIntel MCP
 
-## Padrão de Nomenclatura
-Todas as variáveis usam `SCREAMING_SNAKE_CASE` (letras maiúsculas com underscores).
+## Obrigatórias (aplicação não inicia sem elas)
 
-## Uso do .env.example
-1. Copie o arquivo `.env.example` para:
-   - `.env.local` (ambiente local)
-   - `.env.staging` (ambiente de staging)
-   - `.env.production` (ambiente de produção)
-2. Preencha os valores necessários em cada arquivo
-3. O sistema carregará automaticamente as variáveis baseado no valor de `ENVIRONMENT`
+| Variável | Descrição | Exemplo |
+|----------|-----------|---------|
+| `FLEET_API_BASE_URL` | URL base da API externa | `https://api.com/v1` |
+| `FLEET_API_KEY` | Chave de autenticação | `abc123...` |
+| `SUPABASE_URL` | URL do projeto Supabase | `https://xxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | Supabase public key | `eyJhbG...` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service key | `eyJhbG...` |
+| `API_SECRET_KEY` | Secret key da aplicação | Gerar com `openssl rand -hex 32` |
 
-## Ambientes Suportados
-- `local`: Desenvolvimento local
-- `staging`: Homologação/pré-produção
-- `production`: Produção (dados reais)
+## Opcionais (têm valores padrão)
 
-## Variáveis Obrigatórias vs Opcionais
-| Variável               | Obrigatória | Descrição                                                                 |
-|------------------------|-------------|---------------------------------------------------------------------------|
-| `ENVIRONMENT`          | Sim         | Define o ambiente de execução (local, staging, production)               |
-| `FLEET_API_BASE_URL`   | Sim         | URL base da API externa de frota                                          |
-| `FLEET_API_KEY`        | Sim         | Chave de autenticação da API de frota                                    |
-| `SUPABASE_URL`         | Sim         | URL do projeto Supabase                                                   |
-| `SUPABASE_ANON_KEY`    | Sim         | Chave pública para operações client-side                                  |
-| `SUPABASE_SERVICE_ROLE_KEY` | Sim    | Chave privilegiada para operações server-side (armazenar com segurança)  |
-| `REDIS_HOST`           | Sim         | Endereço do servidor Redis                                                |
-| `API_SECRET_KEY`       | Sim         | Chave secreta para JWT/sessions (gerar com: `openssl rand -hex 32`)      |
-| `ALLOWED_USERS`        | Sim         | Números de telefone permitidos no MVP (separados por vírgula)             |
+| Variável | Default | Descrição |
+|----------|---------|-----------|
+| `ENVIRONMENT` | `local` | Ambiente de execução |
+| `DEBUG` | `false` | Modo debug |
+| `LOG_LEVEL` | `INFO` | Nível de log |
+| `REDIS_HOST` | `localhost` | Host do Redis |
+| `REDIS_PORT` | `6379` | Porta do Redis |
+| `REDIS_PASSWORD` | _vazio_ | Senha do Redis (obrigatória em prod) |
+| `SERVER_PORT` | `8000` | Porta do servidor |
+| `MAX_RECORDS_PER_QUERY` | `100` | Limite de registros |
 
-Variáveis marcadas como **opcionais** possuem valores padrão que podem ser mantidos ou modificados conforme necessidade.
+## Como gerar valores seguros
 
-## Boas Práticas
-- Nunca commit arquivos `.env` no Git
-- Mantenha chaves sensíveis em gerenciadores de secrets (Infisical, AWS Secrets Manager)
-- Revise periodicamente as permissões das chaves de API
+### API_SECRET_KEY
+```bash
+openssl rand -hex 32
+```
+
+### REDIS_PASSWORD (produção)
+```bash
+openssl rand -base64 32
+```
+
+## Execução do Script de Validação
+
+### Linux/macOS
+```bash
+# Tornar executável
+chmod +x scripts/validate_env.py
+
+# Executar
+./scripts/validate_env.py
+```
+
+### Windows
+```bash
+# Executar via Python
+python scripts/validate_env.py
+```
+
+## Ambientes
+
+### Local (Desenvolvimento)
+- DEBUG=true
+- REDIS_HOST=localhost
+- Sem REDIS_PASSWORD
+
+### Staging (Homologação)
+- DEBUG=false
+- REDIS_HOST=<IP_VPS>
+- COM REDIS_PASSWORD
+
+### Production (Produção)
+- DEBUG=false
+- Use Infisical para todas as secrets
+- Todos os valores obrigatórios preenchidos
