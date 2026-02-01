@@ -1,0 +1,69 @@
+# ==============================================================================
+# FLEETINTEL MCP - DOCKERIGNORE
+# ==============================================================================
+#
+# Este arquivo define quais arquivos/diretórios devem ser ignorados ao
+# construir imagens Docker, reduzindo tamanho e tempo de build.
+#
+# ==============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+*.so
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+.venv/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Tests
+tests/
+*.test.py
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+
+# Data files
+data/
+*.csv
+*.json
+*.parquet

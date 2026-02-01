@@ -1,0 +1,64 @@
+# ==============================================================================
+# FLEETINTEL MCP - DOCKER COMPOSE LOCAL DEVELOPMENT
+# ==============================================================================
+#
+# Este docker-compose é para ambiente LOCAL de desenvolvimento.
+# Para produção, use configurações diferentes.
+#
+# SERVIÇOS:
+# - redis: Cache e filas
+# - redis-commander: UI para debug do Redis (opcional)
+#
+# USO:
+# docker-compose -f docker-compose.local.yml up -d
+# docker-compose -f docker-compose.local.yml down
+#
+# ==============================================================================
+
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: fleetintel-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - fleetintel-network
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      com.fleetintel.project: "fleetintel-mcp"
+      com.fleetintel.environment: "development"
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: fleetintel-redis-ui
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:fleetintel-redis:6379
+    networks:
+      - fleetintel-network
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    labels:
+      com.fleetintel.project: "fleetintel-mcp"
+      com.fleetintel.environment: "development"
+
+networks:
+  fleetintel-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local

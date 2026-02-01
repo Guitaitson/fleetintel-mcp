@@ -1,0 +1,95 @@
+# FleetIntel MCP - AI Agent Context
+
+## Stack Tecnológica
+- **Backend**: Python 3.12+ com FastAPI
+- **Database**: PostgreSQL 17.6 (Supabase)
+- **ORM**: AsyncPG + SQLAlchemy (async)
+- **Agent Framework**: LangGraph (planejado)
+- **ETL**: Pandas para processamento de dados
+- **Package Manager**: uv (para dependências Python)
+
+## Estrutura do Projeto
+```
+fleetintel-mcp/
+├── app/                    # FastAPI application (MCP Server)
+├── agent/                  # LangGraph agent code
+├── docs/                   # Documentação completa
+│   ├── PROJECT_STATUS.md   # Estado atual do projeto
+│   ├── ONBOARDING_AGENT.md # Guia para agentes de IA
+│   ├── git/                # Estratégias Git
+│   └── setup/              # Configuração de ambiente
+├── scripts/                # Scripts ETL e utilitários
+├── data/                   # Dados (IGNORADO no Git)
+│   ├── raw/                # Dados brutos Excel/CSV
+│   └── processed/          # Dados normalizados
+├── supabase/migrations/    # Migrations do banco
+└── .env                    # Credenciais (IGNORADO no Git)
+```
+
+## Arquivos Essenciais para Ler Primeiro
+1. `docs/PROJECT_STATUS.md` — Estado atual do projeto
+2. `docs/ONBOARDING_AGENT.md` — Guia de onboarding
+3. `docs/DATABASE_REDESIGN_V2.md` — Arquitetura do banco
+4. `docs/git/CORRECOES_ETL_V2.md` — Correções recentes no ETL
+5. `README.md` — Overview geral
+
+## Convenções de Código
+- **Python**: PEP 8, type hints obrigatórios
+- **Async**: Sempre usar async/await para operações de I/O
+- **Nomes**: snake_case para funções/variáveis, PascalCase para classes
+- **Commits**: Conventional Commits (feat:, fix:, docs:, etc.)
+- **Branches**: feature/, bugfix/, hotfix/ + descrição curta
+
+## Comandos Essenciais
+```bash
+# Configurar ambiente
+uv venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+uv pip install -r requirements.txt
+
+# ETL Pipeline (ordem correta)
+uv run python scripts/load_excel_to_csv.py      # Excel → CSV Raw
+uv run python scripts/normalize_data.py         # CSV Raw → CSV Normalized
+uv run python scripts/load_normalized_schema.py # CSV Normalized → PostgreSQL
+
+# Testes
+uv run python scripts/test_connection.py        # Testar conexão Supabase
+uv run python scripts/test_etl_one_record.py    # Testar ETL com 1 registro
+
+# Migrations
+uv run python scripts/apply_migrations.py       # Aplicar migrations
+```
+
+## Regras de Negócio Críticas
+1. **CNPJs, CPFs, CEPs, CNAEs devem SEMPRE ser tratados como strings** com padding de zeros (zfill)
+   - CNPJ: 14 dígitos
+   - CPF: 11 dígitos
+   - CEP: 8 dígitos
+   - CNAE: 7 dígitos
+
+2. **Dados normalizados seguem schema**:
+   - marcas → modelos → vehicles
+   - empresas → enderecos + contatos
+   - registrations (junction table)
+
+3. **Pipeline ETL é idempotente**: Re-executar não duplica dados (usa upserts)
+
+4. **Dados sensíveis NUNCA vão para Git**:
+   - `.env` com credenciais
+   - `data/` com PII de veículos/empresas
+   - CSVs/Excel com registros reais
+
+## Status Atual do Projeto
+Veja `docs/PROJECT_STATUS.md` para o estado atualizado das tarefas, problemas em aberto e próximos passos.
+
+## Troca de Ferramenta de Agente
+Antes de trocar de Cline → KiloCode/Cursor/etc.:
+1. Commitar todas as mudanças
+2. Atualizar `docs/PROJECT_STATUS.md` com progresso
+3. Push para GitHub
+4. Na nova ferramenta: pull + ler `docs/PROJECT_STATUS.md` e este arquivo
+
+## Links Úteis
+- GitHub: https://github.com/Guitaitson/fleetintel-mcp
+- Supabase: PostgreSQL 17.6 em `aws-1-us-east-1.pooler.supabase.com`
+- Documentação completa: Ver pasta `docs/`

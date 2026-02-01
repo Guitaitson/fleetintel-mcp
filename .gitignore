@@ -4,17 +4,27 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.venv/
 venv/
+ENV/
 env/
-.env
-.env.local
-.env.*.local
+*.egg
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+uv.lock
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
@@ -24,9 +34,22 @@ Thumbs.db
 *.log
 logs/
 
-# Databases
-*.db
-*.sqlite
+# Environment variables (SENSITIVE!)
+.env
+.env.local
+.env.test
+.env.production
+.env.staging
 
-# Redis
-dump.rdb
+# Data files (large files, PII, or processed data)
+data/processed/
+data/raw/
+*.csv
+*.xlsx
+*.xls
+CNAE_TRAT.csv
+Sample*.xlsx
+
+# Reports and outputs
+reports/
+htmlcov/

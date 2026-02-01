@@ -1,3 +1,5 @@
-pydantic-settings
-supabase
-redis
+# Instalar via: pip install -e .
+
+# Para desenvolvimento: pip install -e ".[dev]"
+
+-e .
