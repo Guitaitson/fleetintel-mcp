@@ -42,11 +42,15 @@ async def load_marcas_modelos(conn, df):
     marcas_unicas = df['marca'].dropna().unique()
     print(f"   Marcas únicas: {len(marcas_unicas)}")
     
-    for marca in tqdm(marcas_unicas, desc="Inserindo marcas"):
-        await conn.execute(
-            text("INSERT INTO marcas (nome) VALUES (:nome) ON CONFLICT (nome) DO NOTHING"),
-            {"nome": marca}
-        )
+    # Inserir marcas em lote
+    if len(marcas_unicas) > 0:
+        stmt = text("""
+            INSERT INTO marcas (nome)
+            VALUES (:nome)
+            ON CONFLICT (nome) DO NOTHING
+        """)
+        params = [{"nome": marca} for marca in marcas_unicas]
+        await conn.execute(stmt, params)
     
     # Buscar IDs das marcas
     result = await conn.execute(text("SELECT id, nome FROM marcas"))
@@ -58,30 +62,38 @@ async def load_marcas_modelos(conn, df):
     
     print(f"   Modelos únicos: {len(modelos_df)}")
     
-    for _, row in tqdm(modelos_df.iterrows(), total=len(modelos_df), desc="Inserindo modelos"):
+    # Inserir modelos em lote
+    modelos_to_insert = []
+    for _, row in modelos_df.iterrows():
         if pd.notna(row['marca']) and pd.notna(row['modelo']):
-            try:
-                await conn.execute(
-                    text("""
-                        INSERT INTO modelos (marca_id, nome, cod_modelo, segmento, subsegmento, 
-                                            grupo_modelo, tracao, cilindrada)
-                        VALUES (:marca_id, :nome, :cod_modelo, :segmento, :subsegmento,
-                                :grupo_modelo, :tracao, :cilindrada)
-                        ON CONFLICT (marca_id, nome) DO NOTHING
-                    """),
-                    {
-                        "marca_id": marca_map.get(row['marca']),
-                        "nome": row['modelo'],
-                        "cod_modelo": row.get('cod_modelo'),
-                        "segmento": row.get('segmento'),
-                        "subsegmento": row.get('subsegmento'),
-                        "grupo_modelo": row.get('grupo_modelo'),
-                        "tracao": row.get('tracao'),
-                        "cilindrada": row.get('cilindrada')
-                    }
-                )
-            except Exception as e:
-                continue
+            modelos_to_insert.append({
+                "marca_id": marca_map.get(row['marca']),
+                "nome": row['modelo'],
+                "cod_modelo": str(row.get('cod_modelo')) if pd.notna(row.get('cod_modelo')) else None,
+                "segmento": row.get('segmento'),
+                "subsegmento": row.get('subsegmento'),
+                "grupo_modelo": row.get('grupo_modelo'),
+                "tracao": row.get('tracao') if pd.notna(row.get('tracao')) else None,
+                "cilindrada": str(row.get('cilindrada')) if pd.notna(row.get('cilindrada')) else None
+            })
+    
+    if modelos_to_insert:
+        stmt = text("""
+            INSERT INTO modelos (marca_id, nome, cod_modelo, segmento, subsegmento, 
+                                grupo_modelo, tracao, cilindrada)
+            VALUES (:marca_id, :nome, :cod_modelo, :segmento, :subsegmento,
+                    :grupo_modelo, :tracao, :cilindrada)
+            ON CONFLICT (marca_id, nome) DO NOTHING
+        """)
+        
+        # Inserir em lotes de 1000 com progress bar
+        batch_size = 1000
+        with tqdm(total=len(modelos_to_insert), desc="Inserindo modelos (lote)") as pbar:
+            for i in range(0, len(modelos_to_insert), batch_size):
+                batch = modelos_to_insert[i:i+batch_size]
+                await conn.execute(stmt, batch)
+                pbar.update(len(batch))
+                pbar.refresh()
     
     # Buscar IDs dos modelos
     result = await conn.execute(text("""

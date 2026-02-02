@@ -1,46 +1,117 @@
-from pydantic import BaseModel, Field, validator
-from datetime import date
-from typing import Optional
+"""Pydantic schemas for FleetIntel MCP Server queries"""
+from pydantic import BaseModel, Field
+from typing import Optional, List
 
-class BaseQueryParams(BaseModel):
-    """Parâmetros base para consultas FleetIntel"""
-    
-    uf: str = Field(..., description="UF obrigatória (ex: SP, RJ)")
-    start_date: date = Field(..., description="Data inicial (YYYY-MM-DD)")
-    end_date: date = Field(..., description="Data final (YYYY-MM-DD)")
-    limit: int = Field(100, le=100, description="Máximo 100 registros")
-    
-    @validator('uf')
-    def validate_uf(cls, v):
-        ufs_validas = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"]
-        if v.upper() not in ufs_validas:
-            raise ValueError(f"UF inválida. Use: {', '.join(ufs_validas)}")
-        return v.upper()
-    
-    @validator('end_date')
-    def validate_date_range(cls, v, values):
-        if 'start_date' in values:
-            delta = v - values['start_date']
-            if delta.days > 90:
-                raise ValueError("Período máximo: 90 dias")
-        return v
 
-class VehicleQueryParams(BaseQueryParams):
-    """Parâmetros para consulta de veículos"""
-    vehicle_type: Optional[str] = Field(None, description="Tipo de veículo (ex: caminhão, van)")
-    status: Optional[str] = Field(None, description="Status operacional (ativo, manutenção)")
+# Vehicle Query Schema
+class VehicleQuery(BaseModel):
+    """Query parameters for vehicle search"""
+    chassi: Optional[str] = Field(None, description="Vehicle chassis (VIN)")
+    placa: Optional[str] = Field(None, description="License plate")
+    marca: Optional[str] = Field(None, description="Brand name")
+    modelo: Optional[str] = Field(None, description="Model name")
+    ano_fabricacao_min: Optional[int] = Field(None, description="Minimum manufacturing year")
+    ano_fabricacao_max: Optional[int] = Field(None, description="Maximum manufacturing year")
+    ano_modelo_min: Optional[int] = Field(None, description="Minimum model year")
+    ano_modelo_max: Optional[int] = Field(None, description="Maximum model year")
+    limit: int = Field(100, ge=1, le=1000, description="Maximum results to return")
 
-class TripQueryParams(BaseQueryParams):
-    """Parâmetros para consulta de viagens"""
-    driver_id: Optional[str] = Field(None, description="ID do motorista")
-    min_distance: Optional[int] = Field(None, description="Distância mínima (km)")
 
-class DriverQueryParams(BaseQueryParams):
-    """Parâmetros para consulta de motoristas"""
-    license_type: Optional[str] = Field(None, description="Tipo de CNH (ex: C, D)")
-    active_only: bool = Field(True, description="Apenas motoristas ativos")
+class Vehicle(BaseModel):
+    """Vehicle data model"""
+    id: int
+    chassi: str
+    placa: str
+    marca: str
+    modelo: str
+    ano_fabricacao: int
+    ano_modelo: int
 
-class StatusQueryParams(BaseQueryParams):
-    """Parâmetros para status operacional"""
-    include_history: bool = Field(False, description="Incluir histórico de 24h")
-    detailed: bool = Field(False, description="Detalhes completos")
+
+class VehicleResponse(BaseModel):
+    """Vehicle query response"""
+    vehicles: List[Vehicle]
+    count: int
+
+
+# Empresa Query Schema
+class EmpresaQuery(BaseModel):
+    """Query parameters for company search"""
+    cnpj: Optional[str] = Field(None, description="CNPJ (exact match)")
+    razao_social: Optional[str] = Field(None, description="Social security number (ILIKE)")
+    nome_fantasia: Optional[str] = Field(None, description="Trade name (ILIKE)")
+    segmento_cliente: Optional[str] = Field(None, description="Customer segment")
+    grupo_locadora: Optional[str] = Field(None, description="Fleet company group")
+    limit: int = Field(100, ge=1, le=1000, description="Maximum results to return")
+
+
+class Empresa(BaseModel):
+    """Company data model"""
+    id: int
+    cnpj: str
+    razao_social: Optional[str]
+    nome_fantasia: Optional[str]
+    segmento_cliente: Optional[str]
+    grupo_locadora: Optional[str]
+
+
+class EmpresaResponse(BaseModel):
+    """Company query response"""
+    empresas: List[Empresa]
+    count: int
+
+
+# Registration Query Schema
+class RegistrationQuery(BaseModel):
+    """Query parameters for registration search"""
+    data_emplacamento_inicio: Optional[str] = Field(None, description="Registration start date (ISO format)")
+    data_emplacamento_fim: Optional[str] = Field(None, description="Registration end date (ISO format)")
+    municipio_emplacamento: Optional[str] = Field(None, description="Registration municipality (ILIKE)")
+    uf_emplacamento: Optional[str] = Field(None, description="Registration state (exact match)")
+    preco_min: Optional[float] = Field(None, description="Minimum price")
+    preco_max: Optional[float] = Field(None, description="Maximum price")
+    preco_validado: Optional[bool] = Field(None, description="Price validated flag")
+    chassi: Optional[str] = Field(None, description="Vehicle chassis")
+    placa: Optional[str] = Field(None, description="License plate")
+    marca: Optional[str] = Field(None, description="Brand name")
+    modelo: Optional[str] = Field(None, description="Model name")
+    limit: int = Field(100, ge=1, le=1000, description="Maximum results to return")
+
+
+class Registration(BaseModel):
+    """Registration data model"""
+    id: int
+    data_emplacamento: str
+    municipio_emplacamento: str
+    uf_emplacamento: str
+    preco: float
+    preco_validado: Optional[bool]
+    chassi: str
+    placa: str
+    marca: str
+    modelo: str
+    ano_fabricacao: int
+    ano_modelo: int
+    cnpj: str
+    razao_social: Optional[str]
+    nome_fantasia: Optional[str]
+    segmento_cliente: Optional[str]
+    grupo_locadora: Optional[str]
+
+
+class RegistrationResponse(BaseModel):
+    """Registration query response"""
+    registrations: List[Registration]
+    count: int
+
+
+# Stats Response Schema
+class StatsResponse(BaseModel):
+    """Database statistics response"""
+    marcas: int
+    modelos: int
+    vehicles: int
+    empresas: int
+    enderecos: int
+    contatos: int
+    registrations: int

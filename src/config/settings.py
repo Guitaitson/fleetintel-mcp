@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic.v1 import Field, validator, SecretStr
+from pydantic import Field, field_validator, SecretStr
 from typing import Literal
 from pathlib import Path
 
@@ -75,17 +75,20 @@ class Settings(BaseSettings):
     infisical_project_id: str | None = None
     infisical_environment: str | None = None
     
-    @validator("cors_origins")
+    @field_validator("cors_origins")
+    @classmethod
     def parse_cors_origins(cls, v: str) -> list[str]:
         if v == "*":
             return ["*"]
         return [origin.strip() for origin in v.split(",")]
     
-    @validator("allowed_hosts")
+    @field_validator("allowed_hosts")
+    @classmethod
     def parse_allowed_hosts(cls, v: str) -> list[str]:
         return [host.strip() for host in v.split(",")]
     
-    @validator("allowed_users")
+    @field_validator("allowed_users")
+    @classmethod
     def parse_allowed_users(cls, v: str) -> list[str]:
         if not v:
             return []

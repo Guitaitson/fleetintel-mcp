@@ -1,0 +1,8 @@
+# Arquivo 1 (600k registros)
+INPUT_PATH="data/raw/Sample-Emplacamentos.xlsx" uv run python scripts/load_excel_to_csv.py
+uv run python scripts/normalize_data.py
+uv run python scripts/load_to_supabase.py
+
+# Validação final
+uv run python scripts/validate_and_refresh.py
+uv run python scripts/generate_quality_report.py

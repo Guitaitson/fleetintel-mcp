@@ -27,3 +27,7 @@ AsyncSessionLocal = sessionmaker(
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
+
+def get_db_engine():
+    """Get the database engine"""
+    return engine
