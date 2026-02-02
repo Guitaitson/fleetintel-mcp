@@ -231,9 +231,11 @@ async def load_registrations(conn, df, vehicle_map, empresa_map):
     success_count = 0
     error_count = 0
     
-    for _, row in tqdm(df.iterrows(), total=len(df), desc="Inserindo registrations"):
+    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Inserindo registrations"):
         try:
-            vehicle_id = vehicle_map.get(row['chassi'])
+            chassi_value = row['chassi']
+            vehicle_id = vehicle_map.get(chassi_value)
+            
             # CNPJ já vem normalizado (string de 14 dígitos)
             cnpj_key = row['cpf_cnpj_proprietario'] if pd.notna(row['cpf_cnpj_proprietario']) else None
             empresa_id = empresa_map.get(cnpj_key) if cnpj_key else None
@@ -257,6 +259,19 @@ async def load_registrations(conn, df, vehicle_map, empresa_map):
             # Gerar external_id
             external_id = generate_external_id(row['chassi'], str(data_emplac))
             
+            # Converter preco_validado para boolean
+            preco_val_raw = row.get('preco_validado')
+            preco_validado = None
+            if pd.notna(preco_val_raw):
+                if isinstance(preco_val_raw, str):
+                    preco_validado = preco_val_raw.upper() == 'SIM'
+                elif isinstance(preco_val_raw, bool):
+                    preco_validado = preco_val_raw
+            
+            # Converter campos string que podem ter nan para None
+            def safe_str(value):
+                return value if pd.notna(value) else None
+            
             await conn.execute(
                 text("""
                     INSERT INTO registrations (external_id, vehicle_id, empresa_id,
@@ -271,21 +286,21 @@ async def load_registrations(conn, df, vehicle_map, empresa_map):
                             :cnpj_concessionario, :concessionario,
                             :area_operacional, :preco, :preco_validado,
                             'excel_inicial', 1)
-                    ON CONFLICT (external_id) DO NOTHING
+                    ON CONFLICT (vehicle_id, data_emplacamento) DO NOTHING
                 """),
                 {
                     "external_id": external_id,
                     "vehicle_id": vehicle_id,
                     "empresa_id": empresa_id,
                     "data_emplacamento": data_emplac,
-                    "municipio_emplacamento": row.get('municipio_emplacamento'),
-                    "uf_emplacamento": row.get('uf_emplacamento'),
-                    "regiao_emplacamento": row.get('regiao_emplacamento'),
-                    "cnpj_concessionario": row.get('cnpj_concessionario'),  # CNPJ já normalizado
-                    "concessionario": row.get('concessionario'),
-                    "area_operacional": row.get('area_operacional'),
+                    "municipio_emplacamento": safe_str(row.get('municipio_emplacamento')),
+                    "uf_emplacamento": safe_str(row.get('uf_emplacamento')),
+                    "regiao_emplacamento": safe_str(row.get('regiao_emplacamento')),
+                    "cnpj_concessionario": safe_str(row.get('cnpj_concessionario')),
+                    "concessionario": safe_str(row.get('concessionario')),
+                    "area_operacional": safe_str(row.get('area_operacional')),
                     "preco": float(row['preco']) if pd.notna(row.get('preco')) else None,
-                    "preco_validado": row.get('preco_validado')
+                    "preco_validado": preco_validado
                 }
             )
             success_count += 1

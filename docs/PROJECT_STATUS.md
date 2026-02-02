@@ -1,8 +1,8 @@
 # FleetIntel MCP - Status do Projeto
 
-**Última Atualização**: 2026-01-31 12:32 BRT  
+**Última Atualização**: 2026-02-02 10:40 BRT  
 **Branch Atual**: main  
-**Último Commit**: 04f6ed9994b7a10a4a30eb49b5889fdb961c45bc
+**Último Commit**: (pendente commit)
 
 ---
 
@@ -22,8 +22,8 @@ Este documento reflete o **estado atual** do projeto FleetIntel MCP. É atualiza
 - Migrations aplicadas
 - Schema normalizado funcional
 
-### ⚠️ Epic 4: ETL V2 - Correções de Tipos de Dados
-**Status**: EM ANDAMENTO (95%)  
+### ✅ Epic 4: ETL V2 - Correções de Tipos de Dados
+**Status**: CONCLUÍDO ✅  
 **Documentação**: `docs/git/CORRECOES_ETL_V2.md`
 
 **Progresso**:
@@ -33,40 +33,27 @@ Este documento reflete o **estado atual** do projeto FleetIntel MCP. É atualiza
 - ✅ Corrigido `scripts/load_normalized_schema.py` (dtype=str no CSV read)
 - ✅ Excel → CSV Raw executado: **974,122 registros**
 - ✅ CSV Raw → CSV Normalized executado: **974,122 registros**
-- ❌ **Teste com 100 registros: 0 registrations inseridos** (100% erro)
+- ✅ **Teste com 100 registros: 98 registrations inseridos** (98% sucesso)
 
-**Problema Crítico em Aberto**:
+**Bugs Corrigidos** (2026-02-02):
+1. ✅ **Bug #1 - `preco_validado` boolean**: Campo recebia `nan` (float) e strings `'SIM'`/`'NÃO'` ao invés de boolean. Solução: Conversão explícita para True/False/None.
+2. ✅ **Bug #2 - Unique constraint**: `ON CONFLICT` estava na constraint errada. Solução: Mudado de `(external_id)` para `(vehicle_id, data_emplacamento)`.
+3. ✅ **Bug #3 - Campos string com `nan`**: Campos string recebiam `nan` (float). Solução: Função `safe_str()` para converter `nan` → `None`.
+
+**Resultado Final**:
 ```
 Teste load_normalized_schema.py (100 registros):
 - Marcas: 6 inseridos ✅
 - Modelos: 30 inseridos ✅
 - Vehicles: 100 inseridos ✅
 - Empresas: 50 inseridos ✅
-- Registrations: 0 inseridos ❌ (100 errors)
+- Registrations: 98 inseridos ✅ (2 erros esperados = CNPJs ausentes)
 ```
 
-**Hipótese**: Os maps (`vehicle_map`, `empresa_map`) não estão fazendo match com os dados dos registros. Possíveis causas:
-- Keys dos maps (chassi, CNPJ) podem ter formato diferente dos valores nas rows
-- Possível problema de None/NaN handling
-- Possível incompatibilidade de tipos (string vs float residual)
-
-**Próximos Passos Técnicos**:
-1. Adicionar debug logging em `load_registrations()`:
-   ```python
-   vehicle_id = vehicle_map.get(row['chassi'])
-   if not vehicle_id:
-       print(f"❌ Vehicle not found for chassi: {row['chassi']}")
-   
-   cnpj_key = row['cpf_cnpj_proprietario']
-   empresa_id = empresa_map.get(cnpj_key)
-   if not empresa_id:
-       print(f"❌ Empresa not found for CNPJ: {cnpj_key}")
-   ```
-2. Verificar tipos de dados entre map keys e row values
-3. Testar com sample pequeno (5-10 registros) com logging verboso
-4. Corrigir matching issue
-5. Re-testar com 100 registros
-6. Se passar, executar carga completa (974k registros)
+**Próximos Passos**:
+1. Executar carga completa com `--full` (974k registros)
+2. Validar integridade dos dados no Supabase
+3. Gerar relatório de qualidade de dados
 
 ---
 
@@ -96,13 +83,7 @@ Teste load_normalized_schema.py (100 registros):
 
 ## 🐛 Problemas em Aberto
 
-### 🔴 CRÍTICO: Registrations com 0 inserções
-- **Onde**: `scripts/load_normalized_schema.py`
-- **Sintoma**: 100% das registrations falham ao inserir
-- **Impacto**: Carga completa de 974k registros bloqueada
-- **Investigação**: Ver seção "Epic 4" acima
-
-### 🟡 MÉDIO: Dados CSV grandes não protegidos inicialmente
+###  MÉDIO: Dados CSV grandes não protegidos inicialmente
 - **Resolvido**: Atualizado `.gitignore` em 2026-01-31
 - **Ação Pendente**: Remover CSVs grandes do histórico Git se necessário
 
@@ -141,9 +122,10 @@ uv run python scripts/test_connection.py
 ## 🚀 Próximos Milestones
 
 ### Curto Prazo (Esta Semana)
-- [ ] Resolver problema de registrations (0 inserções)
-- [ ] Completar carga ETL de 974k registros
+- [x] Resolver problema de registrations (98% sucesso) ✅
+- [ ] Completar carga ETL completa de 974k registros com `--full`
 - [ ] Validar integridade dos dados no Supabase
+- [ ] Gerar relatório de qualidade de dados
 
 ### Médio Prazo (Próximas 2 Semanas)
 - [ ] Implementar FastAPI MCP Server (GT-11 a GT-15)
@@ -207,4 +189,4 @@ Este projeto usa:
 
 ---
 
-**Última ação antes desta atualização**: Criação de `.clinerules` e atualização de `.gitignore` para proteger dados sensíveis (2026-01-31 12:32 BRT).
+**Última ação antes desta atualização**: Resolução do bug GT-28 - ETL registrations passando de 0% → 98% de sucesso após correção de 3 bugs críticos (preco_validado boolean, ON CONFLICT constraint, campos string com nan) (2026-02-02 10:40 BRT).

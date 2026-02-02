@@ -1,4 +1,3 @@
-# FleetIntel MCP - Onboarding para Agentes de IA
 
 **Bem-vindo(a) ao FleetIntel MCP!** 🚀
 
