@@ -1,8 +1,8 @@
 # FleetIntel MCP - Status do Projeto
 
-**Última Atualização**: 2026-02-02 18:59 BRT  
+**Última Atualização**: 2026-02-03 01:07 BRT  
 **Branch Atual**: feature/gt-9-mvp-guardrails  
-**Último Commit**: GT-9: Implement MVP scope and guardrails (2026-01-04)
+**Último Commit**: docs: Add Git workflow and migration documentation (2026-02-02)
 
 ---
 
@@ -32,6 +32,12 @@ Este documento reflete o **estado atual** do projeto FleetIntel MCP. É atualiza
 - ✅ [`docs/ROADMAP.md`](docs/ROADMAP.md) - Roadmap completo do projeto
 - ✅ [`docs/EPICS.md`](docs/EPICS.md) - Detalhes de todos os épicos
 - ✅ [`docs/RESPOSTA_PERGUNTAS_INTEGRACOES.md`](docs/RESPOSTA_PERGUNTAS_INTEGRACOES.md) - Respostas às perguntas sobre integrações
+- ✅ [`docs/GIT_WORKFLOW.md`](docs/GIT_WORKFLOW.md) - Política de commits e branches
+- ✅ [`docs/MIGRATION_GUIDE.md`](docs/MIGRATION_GUIDE.md) - Guia de migração de ferramenta
+- ✅ [`docs/HANDOFF_CHECKLIST.md`](docs/HANDOFF_CHECKLIST.md) - Checklist de handoff
+- ✅ [`docs/DATA_VALIDATION_REPORT_2026-02-02.md`](docs/DATA_VALIDATION_REPORT_2026-02-02.md) - Validação de dados do Excel
+- ✅ [`docs/ETL_LOAD_STATUS_2026-02-03.md`](docs/ETL_LOAD_STATUS_2026-02-03.md) - Status da carga de dados
+- ✅ [`docs/ROOT_CAUSE_INVESTIGATION_2026-02-03.md`](docs/ROOT_CAUSE_INVESTIGATION_2026-02-03.md) - Investigação da causa raiz do timeout
 
 ---
 
@@ -74,7 +80,7 @@ Teste load_normalized_schema.py (100 registros):
 ```
 
 ### 🚀 Epic 5: ETL Performance Optimization (GT-28)
-**Status**: CONCLUÍDO ✅  
+**Status**: EM ANDAMENTO ⚠️  
 **Documentação**: `docs/ETL_PERFORMANCE_OPTIMIZATION_PLAN.md`, `docs/ETL_OPTIMIZATION_SUMMARY.md`
 
 **Problema Identificado** (2026-02-02):
@@ -108,16 +114,44 @@ Teste com 10.000 registros:
 - Melhoria estimada: 50x mais rápido que row-by-row
 ```
 
-**Projeção para Carga Completa**:
-- **Antes**: 40+ dias (0.3 reg/s)
-- **Depois**: ~38 minutos (423 reg/s)
-- **Melhoria**: 1.500x mais rápido
+**Problemas Encontrados na Carga Completa** (2026-02-03):
+- ❌ **Timeout do PostgreSQL**: QueryCanceledError após 5 minutos
+- ❌ **Connection Error**: ConnectionDoesNotExistError durante insert
+- ❌ **Apenas 2.6% dos dados carregados**: 36,851 de 1,435,223 registros
+- ❌ **Discrepância de 99,822 contatos**: Script preparou 155,622, mas apenas 5,666 no banco
+- ❌ **Discrepância de registrations**: Script preparou 919,941, mas apenas 9,443 no banco
+
+**Investigação da Causa Raiz** (2026-02-03):
+- 📋 **Problema 1: Inconsistência de Dados**
+  - Script criando contatos duplicados para a mesma empresa
+  - Cada empresa deve ter apenas UM contato, não múltiplos
+  - Discrepância de 99,822 contatos indica problema na lógica de preparação
+
+- 📋 **Problema 2: Arquitetura do Banco de Dados**
+  - Tabela `contatos` tem 4 índices incluindo GIN index em arrays
+  - Tabela `registrations` tem 9 índices
+  - Múltiplas constraints UNIQUE, FOREIGN KEY, e CHECK
+  - Triggers causando overhead durante inserts
+
+- 📋 **Problema 3: Lógica de Preparação de Dados**
+  - Script criando contatos duplicados
+  - Falta de validação antes da inserção
+  - Falta de checkpoint para retomar de onde parou
 
 **Próximos Passos**:
-1. Executar carga completa com `--full` (974k registros)
-2. Validar integridade dos dados no Supabase
-3. Gerar relatório de qualidade de dados
-4. Atualizar PROJECT_STATUS.md com resultados finais
+1. ⚠️ **CORRIGIR CAUSA RAIZ ANTES DE CONTINUAR**:
+   - Revisar e corrigir lógica que cria contatos duplicados
+   - Garantir que cada empresa tenha apenas UM contato
+   - Validar dados antes da inserção
+2. Otimizar estrutura do banco:
+   - Remover índices desnecessários durante inserts
+   - Remover triggers que causam overhead
+   - Simplificar constraints
+3. Implementar retry e validação:
+   - Implementar retry automático em erros de conexão
+   - Implementar validação de dados antes da inserção
+   - Implementar checkpoint para retomar de onde parou
+4. Re-executar carga completa após corrigir causa raiz
 
 ---
 
@@ -201,9 +235,27 @@ All tests passed! [OK]
 - Atualizado `.gitignore` para proteger credenciais e dados sensíveis
 - Implementado workflow de sincronização GitHub
 
+### 2026-02-03: Investigação de Causa Raiz
+- **Problema**: Carga completa falhou com apenas 2.6% dos dados carregados
+- **Causa Raiz Identificada**:
+  1. Inconsistência de dados (99,822 contatos duplicados)
+  2. Arquitetura do banco (muitos índices e constraints)
+  3. Lógica de preparação de dados (criando duplicatas)
+- **Decisão**: Corrigir causa raiz antes de continuar com carga completa
+
 ---
 
 ## 🐛 Problemas em Aberto
+
+### 🔴 CRÍTICO: Carga ETL Completa Falhou (2026-02-03)
+- **Status**: BLOQUEADO - Causa raiz identificada, mas não corrigida
+- **Problema**: Apenas 2.6% dos dados carregados (36,851 de 1,435,223)
+- **Causa Raiz**:
+  1. Script criando contatos duplicados (99,822 discrepância)
+  2. Arquitetura do banco com muitos índices e constraints
+  3. Falta de validação e checkpoint
+- **Ação Necessária**: Corrigir lógica de preparação de dados antes de continuar
+- **Documentação**: `docs/ROOT_CAUSE_INVESTIGATION_2026-02-03.md`
 
 ###  MÉDIO: Dados CSV grandes não protegidos inicialmente
 - **Resolvido**: Atualizado `.gitignore` em 2026-01-31
@@ -248,7 +300,16 @@ uv run python scripts/test_connection.py
 - [x] Implementar otimização de performance do ETL (50x mais rápido) ✅
 - [x] Implementar FastAPI MCP Server (GT-11 a GT-15) ✅
 - [x] Traduzir projeto do Linear para documentos locais ✅
-- [ ] Completar carga ETL completa de 974k registros com `--full`
+- [x] Implementar rotina de integração com Git ✅
+- [x] Executar Excel → CSV Raw (986,859 registros) ✅
+- [x] Executar CSV Raw → CSV Normalized (986,859 registros) ✅
+- [ ] **CORRIGIR CAUSA RAIZ DO TIMEOUT** ⚠️ BLOQUEADO
+  - [ ] Revisar e corrigir lógica que cria contatos duplicados
+  - [ ] Garantir que cada empresa tenha apenas UM contato
+  - [ ] Validar dados antes da inserção
+  - [ ] Otimizar estrutura do banco (remover índices desnecessários)
+  - [ ] Implementar retry automático e checkpoint
+- [ ] Completar carga ETL completa de 986k registros após corrigir causa raiz
 - [ ] Validar integridade dos dados no Supabase
 - [ ] Gerar relatório de qualidade de dados
 
@@ -316,12 +377,18 @@ uv run python scripts/test_connection.py
 - **Git Strategies**: `docs/git/branching-strategy.md`, `docs/git/tagging-strategy.md`
 - **Onboarding para Agentes**: `docs/ONBOARDING_AGENT.md`
 
-### Documentos Recentes (2026-02-02)
+### Documentos Recentes (2026-02-02 a 2026-02-03)
 - **Roadmap Completo**: `docs/ROADMAP.md` ⭐ NOVO - Roadmap completo do projeto com 12 épicos
 - **Épicos Detalhados**: `docs/EPICS.md` ⭐ NOVO - Detalhes de todos os épicos do Linear
 - **Respostas às Perguntas**: `docs/RESPOSTA_PERGUNTAS_INTEGRACOES.md` ⭐ NOVO - Respostas às 3 perguntas sobre integrações
-- **Lições Aprendidas**: `docs/LESSONS_LEARNED.md` ⭐ NOVO - Lições aprendidas e melhores práticas
-- **Supabase Timeout**: `docs/SUPABASE_TIMEOUT_RECOMMENDATIONS.md` ⭐ NOVO - Recomendações para resolver timeout
+- **Git Workflow**: `docs/GIT_WORKFLOW.md` ⭐ NOVO - Política de commits e branches
+- **Migration Guide**: `docs/MIGRATION_GUIDE.md` ⭐ NOVO - Guia de migração de ferramenta
+- **Handoff Checklist**: `docs/HANDOFF_CHECKLIST.md` ⭐ NOVO - Checklist de handoff
+- **Data Validation**: `docs/DATA_VALIDATION_REPORT_2026-02-02.md` ⭐ NOVO - Validação de dados do Excel
+- **ETL Load Status**: `docs/ETL_LOAD_STATUS_2026-02-03.md` ⭐ NOVO - Status da carga de dados
+- **Root Cause Investigation**: `docs/ROOT_CAUSE_INVESTIGATION_2026-02-03.md` ⭐ NOVO - Investigação da causa raiz do timeout
+- **Lições Aprendidas**: `docs/LESSONS_LEARNED.md` - Lições aprendidas e melhores práticas
+- **Supabase Timeout**: `docs/SUPABASE_TIMEOUT_RECOMMENDATIONS.md` - Recomendações para resolver timeout
 - **ETL Optimization**: `docs/ETL_OPTIMIZATION_SUMMARY.md` - Resumo da otimização de ETL
 - **ETL Performance Plan**: `docs/ETL_PERFORMANCE_OPTIMIZATION_PLAN.md` - Plano de otimização de performance
 - **FastAPI Server Status**: `docs/FASTAPI_MCP_SERVER_STATUS.md` - Status do FastAPI MCP Server
@@ -344,4 +411,4 @@ Este projeto usa:
 
 ---
 
-**Última ação antes desta atualização**: Tradução do projeto do Linear para documentos locais - Criação de docs/ROADMAP.md, docs/EPICS.md e atualização de docs/PROJECT_STATUS.md com o estado atual baseado no Linear. O projeto tem 12 épicos planejados, 3 concluídos (25%), 1 em andamento (8%) e 8 planejados (67%). Os documentos criados servem como "norte" para o desenvolvimento futuro, alinhando o estado do Linear com a documentação local (2026-02-02 18:59 BRT).
+**Última ação antes desta atualização**: Investigação da causa raiz do timeout na carga ETL completa - Identificados 3 problemas principais: (1) Inconsistência de dados com 99,822 contatos duplicados, (2) Arquitetura do banco com muitos índices e constraints causando overhead, (3) Lógica de preparação de dados criando duplicatas. Decisão tomada: Corrigir causa raiz antes de continuar com carga completa. Documentação completa em docs/ROOT_CAUSE_INVESTIGATION_2026-02-03.md (2026-02-03 01:07 BRT).

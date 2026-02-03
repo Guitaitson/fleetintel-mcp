@@ -84,8 +84,8 @@ def convert_excel_to_csv(
     """
     
     print("=" * 60)
-    print("📊 GT-26: EXCEL → CSV (V3 - CHUNKING REAL)")
-    print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("GT-26: EXCEL -> CSV (V3 - CHUNKING REAL)")
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     
     input_file = Path(input_path)
@@ -93,11 +93,11 @@ def convert_excel_to_csv(
     
     # Verificar se arquivo existe
     if not input_file.exists():
-        print(f"❌ Arquivo não encontrado: {input_path}")
-        return {"error": "Arquivo não encontrado"}
+        print(f"[ERROR] Arquivo nao encontrado: {input_path}")
+        return {"error": "Arquivo nao encontrado"}
     
-    print(f"\n📋 Arquivo de entrada: {input_file}")
-    print(f"📊 Tamanho: {input_file.stat().st_size / (1024*1024):.2f} MB")
+    print(f"\n[INFO] Arquivo de entrada: {input_file}")
+    print(f"[INFO] Tamanho: {input_file.stat().st_size / (1024*1024):.2f} MB")
     
     # CORREÇÃO: Definir dtype para campos de código (NUNCA números!)
     DTYPE_MAP = {
@@ -111,22 +111,22 @@ def convert_excel_to_csv(
     }
     
     # Ler primeiras linhas para validar
-    print("\n🔍 Validando estrutura...")
+    print("\n[INFO] Validando estrutura...")
     df_sample = pd.read_excel(input_file, nrows=5, dtype=DTYPE_MAP)
     
     if not validate_columns(df_sample):
-        return {"error": "Validação de colunas falhou"}
+        return {"error": "Validacao de colunas falhou"}
     
-    print(f"✅ Estrutura validada: {len(df_sample.columns)} colunas")
+    print(f"[OK] Estrutura validada: {len(df_sample.columns)} colunas")
     
     # Contar total de linhas
-    print("\n🔍 Lendo arquivo completo...")
+    print("\n[INFO] Lendo arquivo completo...")
     df_full = pd.read_excel(input_file, dtype=DTYPE_MAP)
     total_rows = len(df_full)
-    print(f"✅ Total de registros: {total_rows:,}")
+    print(f"[OK] Total de registros: {total_rows:,}")
     
     # Processar e salvar em CSV com CHUNKING REAL
-    print(f"\n📤 Convertendo para CSV (chunking real)...")
+    print(f"\n[INFO] Convertendo para CSV (chunking real)...")
     
     # Criar diretório de saída se não existir
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -177,12 +177,12 @@ def convert_excel_to_csv(
         chunks_processed += 1
     
     # Validar saída
-    print(f"\n✅ Conversão concluída!")
+    print(f"\n[OK] Conclusao concluida!")
     print(f"   Chunks processados: {chunks_processed}")
     print(f"   Linhas escritas: {rows_written:,}")
-    print(f"   Arquivo de saída: {output_file}")
+    print(f"   Arquivo de saida: {output_file}")
     print(f"   Tamanho: {output_file.stat().st_size / (1024*1024):.2f} MB")
-    print(f"🚀 Melhoria estimada: 5x mais estável, menor uso de RAM")
+    print(f"[INFO] Melhoria estimada: 5x mais estavel, menor uso de RAM")
     
     # Retornar estatísticas
     result = {
@@ -216,17 +216,17 @@ if __name__ == "__main__":
     with open(stats_file, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
     
-    print(f"\n📊 Estatísticas salvas em: {stats_file}")
+    print(f"\n[INFO] Estatisticas salvas em: {stats_file}")
     
     # Exibir resumo
     print("\n" + "=" * 60)
-    print("📊 RESUMO DA CONVERSÃO")
+    print("[INFO] RESUMO DA CONVERSAO")
     print("=" * 60)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     
     if result.get("validation_passed"):
-        print("\n🎉 Conversão concluída com sucesso!")
+        print("\n[OK] Conversao concluida com sucesso!")
         sys.exit(0)
     else:
-        print("\n❌ Conversão falhou!")
+        print("\n[ERROR] Conversao falhou!")
         sys.exit(1)

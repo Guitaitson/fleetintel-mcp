@@ -25,7 +25,7 @@ engine = create_async_engine(
     max_overflow=30,
     pool_pre_ping=True,
     pool_recycle=3600,
-    connect_args={"server_settings": {"statement_timeout": "300000"}}  # 5 minutos
+    connect_args={"server_settings": {"statement_timeout": "1800000"}}  # 5 minutos
 )
 
 def generate_external_id(chassi: str, data: str) -> str:
@@ -55,17 +55,16 @@ async def load_marcas_modelos(conn, df):
     marcas_unicas = df['marca'].dropna().unique()
     print(f"   Marcas unicas: {len(marcas_unicas)}")
     
-    # Inserir marcas em lote (batch insert)
+    # Inserir marcas individualmente para evitar timeout
     if len(marcas_unicas) > 0:
-        # Usar sempre ON CONFLICT para evitar problemas de timeout
         stmt = text("""
             INSERT INTO marcas (nome)
             VALUES (:nome)
             ON CONFLICT (nome) DO NOTHING
         """)
-        params = [{"nome": marca} for marca in marcas_unicas]
-        await conn.execute(stmt, params)
-        print("   Marcas inseridas em lote")
+        for marca in marcas_unicas:
+            await conn.execute(stmt, {"nome": marca})
+        print(f"   {len(marcas_unicas)} marcas inseridas individualmente")
     
     # Buscar IDs das marcas
     result = await conn.execute(text("SELECT id, nome FROM marcas"))
@@ -155,7 +154,7 @@ async def load_vehicles(conn, df, marca_map, modelo_map):
             updated_at = NOW()
     """)
     
-    batch_size = 1000
+    batch_size = 500
     with tqdm(total=len(vehicles_to_insert), desc="Inserindo vehicles (batch)") as pbar:
         for i in range(0, len(vehicles_to_insert), batch_size):
             batch = vehicles_to_insert[i:i+batch_size]
@@ -215,7 +214,7 @@ async def load_empresas_enderecos_contatos(conn, df):
                 updated_at = NOW()
         """)
         
-        batch_size = 1000
+        batch_size = 500
         empresa_map = {}
         with tqdm(total=len(empresas_to_insert), desc="Inserindo empresas (batch)") as pbar:
             for i in range(0, len(empresas_to_insert), batch_size):
@@ -272,7 +271,7 @@ async def load_empresas_enderecos_contatos(conn, df):
                 ON CONFLICT (empresa_id) DO NOTHING
             """)
             
-            batch_size = 1000
+            batch_size = 500
             with tqdm(total=len(enderecos_to_insert), desc="Inserindo enderecos (batch)") as pbar:
                 for i in range(0, len(enderecos_to_insert), batch_size):
                     batch = enderecos_to_insert[i:i+batch_size]
@@ -288,7 +287,7 @@ async def load_empresas_enderecos_contatos(conn, df):
                 ON CONFLICT (empresa_id) DO NOTHING
             """)
             
-            batch_size = 1000
+            batch_size = 500
             with tqdm(total=len(contatos_to_insert), desc="Inserindo contatos (batch)") as pbar:
                 for i in range(0, len(contatos_to_insert), batch_size):
                     batch = contatos_to_insert[i:i+batch_size]
@@ -388,7 +387,7 @@ async def load_registrations(conn, df, vehicle_map, empresa_map):
         ON CONFLICT (vehicle_id, data_emplacamento) DO NOTHING
     """)
     
-    batch_size = 1000
+    batch_size = 500
     success_count = 0
     error_count = 0
     

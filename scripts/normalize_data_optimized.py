@@ -61,7 +61,7 @@ def create_contacts_json_vectorized(df):
     Cria JSONB de contatos de forma VETORIZADA
     Melhoria: 20x mais rápido que apply()
     """
-    print("   📞 Criando JSONB contatos (vetorizado)...")
+    print("   [INFO] Criando JSONB contatos (vetorizado)...")
     
     # Extrair colunas de contato
     tel_cols = [f'DDD{i}' for i in range(1, 6)] + [f'TEL{i}' for i in range(1, 6)]
@@ -94,10 +94,16 @@ def create_contacts_json_vectorized(df):
         lambda row: [t for t in row if pd.notna(t) and t != ''], axis=1
     )
     
+    # Garantir que telefones seja sempre uma lista (nunca nan)
+    df['telefones'] = df['telefones'].apply(lambda x: x if isinstance(x, list) else [])
+    
     # Combinar celulares em uma lista por linha
     df['celulares'] = pd.concat([c for c in celulares_list], axis=1).apply(
         lambda row: [c for c in row if pd.notna(c) and c != ''], axis=1
     )
+    
+    # Garantir que celulares seja sempre uma lista (nunca nan)
+    df['celulares'] = df['celulares'].apply(lambda x: x if isinstance(x, list) else [])
     
     # Criar JSONB
     def create_json(telefones, celulares):
@@ -112,7 +118,7 @@ def create_contacts_json_vectorized(df):
     # Remover colunas temporárias
     df.drop(columns=['telefones', 'celulares'], inplace=True)
     
-    print("   ✅ JSONB contatos criado")
+    print("   [OK] JSONB contatos criado")
     return df
 
 def calculate_age_range(idade_dias):
@@ -133,25 +139,25 @@ def normalize_data(input_path: str, output_path: str):
     """Normaliza dados do CSV raw com operações VETORIZADAS"""
     
     print("=" * 60)
-    print("🔧 GT-27: NORMALIZAÇÃO DE DADOS OTIMIZADA V2")
-    print(f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("GT-27: NORMALIZACAO DE DADOS OTIMIZADA V2")
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     
     # Ler CSV raw
-    print(f"\n📋 Lendo: {input_path}")
+    print(f"\n[INFO] Lendo: {input_path}")
     df = pd.read_csv(input_path, sep=';', encoding='utf-8')
-    print(f"✅ {len(df):,} registros lidos")
+    print(f"[OK] {len(df):,} registros lidos")
     
     # Normalizar campos de forma VETORIZADA
-    print("\n🔧 Normalizando campos (vetorizado)...")
+    print("\n[INFO] Normalizando campos (vetorizado)...")
     
     # Datas - vetorizado
-    print("   📅 Normalizando datas...")
+    print("   [INFO] Normalizando datas...")
     df['data_emplacamento'] = pd.to_datetime(df['DATA'], errors='coerce').dt.strftime('%Y-%m-%d')
     df['data_abertura'] = pd.to_datetime(df['DATA ABERTURA EMPRESA'], errors='coerce').dt.strftime('%Y-%m-%d')
     
     # Documentos com padding correto - VETORIZADO com str.extract
-    print("   📄 Normalizando documentos (vetorizado)...")
+    print("   [INFO] Normalizando documentos (vetorizado)...")
     df['chassi'] = df['CHASSI'].astype(str)
     df['placa'] = df['PLACA'].astype(str)
     
@@ -190,7 +196,7 @@ def normalize_data(input_path: str, output_path: str):
     df = create_contacts_json_vectorized(df)
     
     # Campos calculados - vetorizado
-    print("   📊 Calculando campos derivados...")
+    print("   [INFO] Calculando campos derivados...")
     df['faixa_idade_empresa'] = df['IDADE EMPRESA'].apply(calculate_age_range)
     
     # Mapeamento final de colunas
@@ -242,11 +248,11 @@ def normalize_data(input_path: str, output_path: str):
     df_normalized = df_normalized.drop(columns=[c for c in contact_cols if c in df_normalized.columns], errors='ignore')
     
     # Converter strings vazias para None - vetorizado
-    print("   🧹 Limpando strings vazias...")
+    print("   [INFO] Limpando strings vazias...")
     df_normalized = df_normalized.replace('', None)
     
     # Garantir que códigos sejam strings (não números) - vetorizado
-    print("   🔢 Garantindo tipos de códigos...")
+    print("   [INFO] Garantindo tipos de códigos...")
     string_columns = ['cpf_cnpj_proprietario', 'cnpj_concessionario', 'cep',
                       'cod_atividade_economica_norm', 'chassi', 'placa']
     for col in string_columns:
@@ -254,13 +260,13 @@ def normalize_data(input_path: str, output_path: str):
             df_normalized[col] = df_normalized[col].astype('object')  # Força object dtype
     
     # Salvar CSV normalizado
-    print(f"\n📤 Salvando: {output_path}")
+    print(f"\n[INFO] Salvando: {output_path}")
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     df_normalized.to_csv(output_path, index=False, sep=';', encoding='utf-8')
     
-    print(f"✅ {len(df_normalized):,} registros normalizados")
-    print(f"✅ {len(df_normalized.columns)} colunas no arquivo final")
-    print(f"🚀 Melhoria estimada: 20x mais rápido que apply()")
+    print(f"[OK] {len(df_normalized):,} registros normalizados")
+    print(f"[OK] {len(df_normalized.columns)} colunas no arquivo final")
+    print(f"[INFO] Melhoria estimada: 20x mais rapido que apply()")
     
     return {"rows": len(df_normalized), "columns": len(df_normalized.columns)}
 
@@ -269,4 +275,4 @@ if __name__ == "__main__":
         "data/processed/emplacamentos_raw.csv",
         "data/processed/emplacamentos_normalized.csv"
     )
-    print(f"\n🎉 Normalização concluída: {result}")
+    print(f"\n[OK] Normalizacao concluida: {result}")
