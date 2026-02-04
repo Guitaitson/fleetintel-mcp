@@ -1,1 +1,0 @@
-[{"server_settings": {"statement_timeout": "1800000"}}, ["marcas", "modelos", "vehicles", "empresas", "enderecos", "contatos", "registrations"], {"print(f": "table:20s"}, {"count": ""}]

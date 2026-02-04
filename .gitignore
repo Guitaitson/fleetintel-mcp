@@ -48,7 +48,13 @@ data/raw/
 *.xlsx
 *.xls
 CNAE_TRAT.csv
+
+# ETL checkpoint files
+data/etl_checkpoint.json
 Sample*.xlsx
+
+# Archive (obsolete files)
+.archive/
 
 # Reports and outputs
 reports/

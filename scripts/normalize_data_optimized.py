@@ -123,9 +123,14 @@ def create_contacts_json_vectorized(df):
 
 def calculate_age_range(idade_dias):
     """Calcula faixa de idade da empresa"""
-    if pd.isna(idade_dias):
+    if pd.isna(idade_dias) or idade_dias == '':
         return None
-    anos = int(idade_dias) / 365
+    # Remover .0 se presente (pode vir como string)
+    idade_str = str(idade_dias).replace('.0', '')
+    try:
+        anos = int(idade_str) / 365
+    except ValueError:
+        return None
     if anos < 2:
         return "0-2 anos"
     elif anos < 5:
@@ -143,9 +148,11 @@ def normalize_data(input_path: str, output_path: str):
     print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     
-    # Ler CSV raw
+    # Ler CSV raw forçando todas as colunas como strings
     print(f"\n[INFO] Lendo: {input_path}")
-    df = pd.read_csv(input_path, sep=';', encoding='utf-8')
+    
+    # Forçar todas as colunas como strings para evitar inferência incorreta de tipos
+    df = pd.read_csv(input_path, sep=';', encoding='utf-8', dtype=str)
     print(f"[OK] {len(df):,} registros lidos")
     
     # Normalizar campos de forma VETORIZADA
@@ -257,6 +264,8 @@ def normalize_data(input_path: str, output_path: str):
                       'cod_atividade_economica_norm', 'chassi', 'placa']
     for col in string_columns:
         if col in df_normalized.columns:
+            # Remover .0 se presente (pode vir como string)
+            df_normalized[col] = df_normalized[col].astype(str).str.replace(r'\.0$', '', regex=True)
             df_normalized[col] = df_normalized[col].astype('object')  # Força object dtype
     
     # Salvar CSV normalizado
