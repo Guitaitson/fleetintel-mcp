@@ -1,0 +1,34 @@
+# =============================================================================
+# Cloudflare Tunnel — FleetIntel MCP
+# =============================================================================
+# Tunnel persistente que expoe o MCP Server local via HTTPS publico.
+#
+# Pre-requisitos:
+#   1. Conta Cloudflare com dominio gtaitson.space gerenciado pelo CF
+#   2. cloudflared instalado (winget install Cloudflare.cloudflared)
+#   3. Autenticado: cloudflared tunnel login
+#   4. Tunnel criado: cloudflared tunnel create fleetintel
+#   5. DNS configurado: cloudflared tunnel route dns fleetintel mcp.gtaitson.space
+#
+# Como iniciar:
+#   cloudflared tunnel --config infra/cloudflare-tunnel.yml run
+#
+# Como instalar como servico Windows (recomendado):
+#   cloudflared service install --config infra/cloudflare-tunnel.yml
+#   net start cloudflared
+# =============================================================================
+
+tunnel: 16cc0e95-1578-4ad4-94c1-2e3a94c77034
+credentials-file: C:\Users\Pc Gamer\.cloudflared\16cc0e95-1578-4ad4-94c1-2e3a94c77034.json
+
+ingress:
+  # MCP Server — endpoint principal
+  - hostname: mcp.gtaitson.space
+    service: http://localhost:8888
+    originRequest:
+      connectTimeout: 30s
+      tcpKeepAlive: 30s
+      noTLSVerify: false
+
+  # Catch-all: rejeita qualquer outro hostname
+  - service: http_status:404
