@@ -20,11 +20,19 @@ class Settings(BaseSettings):
     log_level: str = "info"
     
     # Database Configuration
-    database_url: str
+    database_url: str = ""
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_key: str = ""
     pool_size: int = 20
     max_overflow: int = 30
     pool_recycle: int = 3600
     statement_timeout: int = 600000  # 10 minutos em milissegundos
+    
+    def model_post_init(self, __context):
+        # Se database_url não foi definido mas SUPABASE_URL foi, usar SUPABASE_URL
+        if not self.database_url and self.supabase_url:
+            self.database_url = self.supabase_url
     
     # CORS Configuration
     cors_origins: list = ["*"]
