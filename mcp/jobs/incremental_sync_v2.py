@@ -20,9 +20,9 @@ from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_MI
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from clients.hubquest_client import (
+from mcp.clients.hubquest_client import (
     HubQuestClient,
     APIConfig,
     SyncResult,
@@ -502,7 +502,8 @@ async def run_manual_sync(
 if __name__ == "__main__":
     import argparse
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(".env")
+    load_dotenv(".env.local", override=True)  # Local overrides
     
     parser = argparse.ArgumentParser(description="Incremental Sync Job")
     parser.add_argument("--manual", action="store_true", help="Run manual sync")
@@ -510,9 +511,18 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
+    # Usa DATABASE_URL do ambiente, garantindo driver asyncpg para SQLAlchemy async
+    raw_db_url = os.getenv("DATABASE_URL", "")
+    if raw_db_url.startswith("postgresql://"):
+        db_url = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif raw_db_url.startswith("postgres://"):
+        db_url = raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    else:
+        db_url = raw_db_url  # ja deve estar em formato asyncpg
+
     config = SyncConfig(
-        database_url=os.getenv("DATABASE_URL"),
-        api_key=os.getenv("HUBQUEST_API_KEY"),
+        database_url=db_url,
+        api_key=os.getenv("HUBQUEST_API_KEY", ""),
         api_url=os.getenv("HUBQUEST_API_URL", "https://api.hubquest.com/v1"),
         schedule_day=os.getenv("SYNC_SCHEDULE_DAY", "sunday"),
         schedule_time=os.getenv("SYNC_SCHEDULE_TIME", "22:00"),
