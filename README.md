@@ -1,243 +1,258 @@
 # FleetIntel MCP
 
-MCP Server FastAPI para consulta de dados de frota brasileira.
+> **Tool MCP especializada em inteligência de frota de veículos pesados do Brasil**
+
+FleetIntel MCP é uma **ferramenta MCP** (Model Context Protocol) que conecta qualquer agente de IA compatível a uma base de dados proprietária de emplacamentos de veículos pesados no Brasil — com dados reais de veículos, empresas proprietárias, localização, preços e histórico de compras.
+
+---
+
+## O que é e o que não é
+
+| ✅ É | ❌ Não é |
+|------|----------|
+| Uma **tool MCP** que expõe dados de frota | Um agente autônomo |
+| Uma API de consulta para **qualquer agente IA** | Um chatbot |
+| Um servidor HTTP local exposto via HTTPS | Um SaaS / produto final |
+| Uma base de dados **local e offline-first** | Dependente de cloud externa |
+
+---
+
+## Capacidades
+
+Conectado ao FleetIntel MCP, seu agente consegue responder perguntas como:
+
+- *"Quais as 10 empresas que mais compraram veículos pesados no Brasil em 2025?"*
+- *"Qual o market share das marcas de caminhão no Rio Grande do Sul em 2024?"*
+- *"Quantos veículos a empresa X emplacou nos últimos 3 meses?"*
+- *"Liste os emplacamentos de caminhões acima de R$ 500k no Paraná em janeiro/2025."*
+- *"Qual a evolução de compras de frota da empresa Y nos últimos 2 anos?"*
+
+---
 
 ## Arquitetura
 
-- **mcp_server/**: FastAPI MCP server com endpoints de consulta
-- **agent/**: LangGraph agent para processamento inteligente
-- **jobs/**: Jobs agendados (sincronização semanal incremental)
-- **scripts/**: Utilitários administrativos
-- **deploy/**: Configurações Docker e deploy
-- **tests/**: Suite de testes
-- **docs/**: Documentação técnica
+```
+┌─────────────────────────────────────────────────────────────┐
+│              AGENTE IA (Claude Desktop / AgentVPS)          │
+│  "Quais empresas mais compraram caminhões em 2025?"         │
+└────────────────────────┬────────────────────────────────────┘
+                         │  MCP Protocol (Streamable HTTP)
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              CLOUDFLARE TUNNEL (HTTPS)                      │
+│              https://mcp.gtaitson.space/mcp                 │
+└────────────────────────┬────────────────────────────────────┘
+                         │  HTTP local
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              MCP SERVER (FastMCP)                           │
+│              localhost:8888 · Uvicorn · Streamable HTTP     │
+│                                                             │
+│   Tools disponíveis:                                        │
+│   • search_vehicles          • search_empresas              │
+│   • search_registrations     • get_stats                    │
+│   • top_empresas_by_registrations                           │
+│   • count_empresa_registrations                             │
+│   • get_market_share                                        │
+└────────────────────────┬────────────────────────────────────┘
+                         │  SQLAlchemy / asyncpg
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              POSTGRESQL 16 (Docker local)                   │
+│              ~986.000 veículos · ~170.000 empresas          │
+│              ~1.000.000+ emplacamentos                      │
+└─────────────────────────────────────────────────────────────┘
+                         ▲
+                         │  Sync incremental diário
+                         │
+┌─────────────────────────────────────────────────────────────┐
+│              SCRIPT DE SYNC (scripts/sync_from_api.py)      │
+│              Busca novos emplacamentos via API externa       │
+│              Roda diariamente · upsert por chassi/CNPJ       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Stack Técnico
 
-- FastAPI (MCP server)
-- LangGraph (agentic workflows)
-- Supabase (Postgres gerenciado)
-- Redis (cache e filas)
-- Docker + Coolify (deployment)
+| Componente | Tecnologia | Versão |
+|-----------|------------|--------|
+| MCP Server | FastMCP (streamable-http) | ≥ 1.0 |
+| Runtime | Uvicorn + asyncio | ≥ 0.32 |
+| Banco de dados | PostgreSQL 16 Alpine | Docker |
+| Cache | Redis 7 Alpine | Docker |
+| Túnel HTTPS | Cloudflare Tunnel (cloudflared) | v2025+ |
+| ETL / Sync | Python + httpx + asyncpg | ≥ 3.11 |
+| Containerização | Docker Compose | local dev |
 
-## 🚀 Setup de Desenvolvimento
+---
 
-### Requisitos
-- Python 3.11 ou 3.12
-- uv (recomendado) ou pip
+## MCP Tools
 
-### ⚙️ Configuração
+| Tool | Descrição |
+|------|-----------|
+| `search_vehicles` | Busca veículos por chassi, placa, marca, modelo ou faixa de ano |
+| `search_empresas` | Busca empresas por CNPJ, razão social, nome fantasia ou segmento |
+| `search_registrations` | Busca emplacamentos por período, UF, município, preço ou veículo |
+| `get_stats` | Contagem geral: marcas, modelos, veículos, empresas, emplacamentos |
+| `top_empresas_by_registrations` | Top N empresas por volume de compras em um ano (com filtro por UF) |
+| `count_empresa_registrations` | Conta emplacamentos de uma empresa específica por nome e ano |
+| `get_market_share` | Market share de marcas por número de emplacamentos em um ano |
 
-### 🛠️ Comandos Disponíveis
+---
 
-```bash
-make help      # Lista todos os comandos disponíveis
-make install   # Instala dependências do projeto
-make dev       # Sobe ambiente local (Redis)
-make test      # Executa testes
-make lint      # Verifica formatação e qualidade do código
-make format    # Formata código automaticamente
-make logs      # Exibe logs dos serviços
-make stop      # Para todos os serviços
-```
-
-### Primeiro Setup
-
-```bash
-# 1. Instalar dependências
-make install
-
-# 2. Configurar variáveis de ambiente
-cp .env.example .env
-# Edite .env com suas credenciais
-
-# 3. Subir serviços locais
-make dev
-
-# 4. Verificar se está funcionando
-make logs
-```
-
-### Workflow de Desenvolvimento
-
-```bash
-# Antes de commitar código:
-make format    # Formata código
-make lint      # Verifica qualidade
-make test      # Roda testes
-```
-
-#### Variáveis de Ambiente
-
-1. Copie o arquivo de exemplo:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edite o arquivo `.env` com suas credenciais reais
-
-3. Valide a configuração:
-   ```bash
-   python scripts/validate_env.py
-   ```
-
-#### Obtendo Credenciais
-
-**Supabase:**
-1. Acesse https://supabase.com/dashboard
-2. Crie novo projeto ou selecione existente
-3. Em Settings > API, copie:
-   - URL
-   - anon key
-   - service_role key
-
-**OpenAI:**
-1. Acesse https://platform.openai.com/api-keys
-2. Crie nova API key
-3. Copie e guarde com segurança
-
-**Redis:**
-- Local: use Docker (veja docker-compose.yml)
-- Cloud: https://redis.com/try-free/
-
-**Evolution API:**
-Consulte documentação em https://doc.evolution-api.com/
-
-**API de Veículos:**
-[Preencher conforme API específica escolhida]
-
-### Instalação com uv (recomendado)
-```bash
-# Instalar uv se necessário
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Criar ambiente virtual e instalar dependências
-uv venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate  # Windows
-
-uv pip install -e ".[dev]"
-```
-
-### Instalação com pip
-```bash
-python -m venv .venv
-source .venv/bin/activate
-
-pip install -e ".[dev]"
-```
-
-### Atualização de Dependências
-
-**Com uv:**
-```bash
-uv lock --upgrade
-uv pip install -e ".[dev]"
-```
-
-**Com pip-tools:**
-```bash
-pip-compile pyproject.toml --upgrade --output-file=requirements.lock
-pip install -r requirements.lock
-```
-
-### Ferramentas de Desenvolvimento
-
-**Linting e Formatação:**
-```bash
-ruff check .
-ruff format .
-black .
-```
-
-**Type Checking:**
-```bash
-mypy mcp_server/ agent/ jobs/
-```
-
-**Testes:**
-```bash
-pytest                    # Todos os testes
-pytest -m unit           # Apenas testes unitários
-pytest -m integration    # Apenas testes de integração
-pytest --cov             # Com cobertura
-```
-
-## 🐳 Ambiente Local (Docker)
+## Setup Rápido
 
 ### Pré-requisitos
-- Docker 20.10+
-- Docker Compose 2.0+
 
-### Iniciar Ambiente
+- Python 3.11 ou 3.12
+- Docker + Docker Compose
+- [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) (para exposição HTTPS)
+- uv (recomendado) ou pip
 
-```bash
-# Opção 1: Usar script helper
-./scripts/docker-up.sh
-
-# Opção 2: Comando direto
-docker-compose -f docker-compose.local.yml up -d
-```
-
-### Serviços Disponíveis
-
-| Serviço | Porta | Descrição |
-| :-- | :-- | :-- |
-| Redis | 6379 | Cache e filas |
-| Redis Commander | 8081 | UI para debug Redis |
-
-### Comandos Úteis
+### 1. Clonar e instalar dependências
 
 ```bash
-# Ver status dos serviços
-docker-compose -f docker-compose.local.yml ps
+git clone https://github.com/SEU_USUARIO/fleetintel-mcp.git
+cd fleetintel-mcp
 
-# Ver logs
-./scripts/docker-logs.sh
-./scripts/docker-logs.sh redis  # apenas Redis
+# Criar ambiente virtual e instalar
+uv venv && source .venv/bin/activate  # Linux/Mac
+# .venv\Scripts\Activate.ps1          # Windows
 
-# Parar serviços
-./scripts/docker-down.sh
-
-# Parar e remover volumes (CUIDADO!)
-./scripts/docker-down.sh --volumes
-
-# Reiniciar um serviço específico
-docker-compose -f docker-compose.local.yml restart redis
-
-# Acessar console do Redis
-docker exec -it fleetintel-redis redis-cli
+uv pip install -e "."
 ```
 
-### Troubleshooting
-
-**Porta já em uso:**
+### 2. Configurar variáveis de ambiente
 
 ```bash
-# Verificar o que está usando a porta
-lsof -i :6379
-# ou
-netstat -tlnp | grep 6379
+cp .env.example .env
+# Edite .env com suas credenciais:
+# DATABASE_URL, REDIS_URL, MCP_AUTH_TOKEN, HUBQUEST_API_KEY
 ```
 
-**Redis não inicia:**
+### 3. Subir banco de dados
 
 ```bash
-# Ver logs detalhados
-docker-compose -f docker-compose.local.yml logs redis
-
-# Remover volumes e recriar
-docker-compose -f docker-compose.local.yml down -v
-docker-compose -f docker-compose.local.yml up -d
+docker compose -f docker-compose.local.yml up -d
 ```
 
-**Limpar tudo e recomeçar:**
+### 4. Iniciar o MCP Server
 
 ```bash
-docker-compose -f docker-compose.local.yml down -v --remove-orphans
-docker-compose -f docker-compose.local.yml up -d --force-recreate
+python -m mcp_server.main
+# [FleetIntel MCP] Iniciando em modo streamable-http na porta 8888
+# INFO: Uvicorn running on http://0.0.0.0:8888
 ```
 
-## Status
+### 5. (Opcional) Expor via Cloudflare Tunnel
 
-🚧 Em desenvolvimento - Epic 1: Bootstrap inicial
+```bash
+cloudflared tunnel --config infra/cloudflare-tunnel.yml run
+```
+
+### 6. Testar localmente
+
+```bash
+# Deve retornar HTTP 404 em / e funcionar em /mcp
+curl -s http://localhost:8888/
+```
+
+> Para o guia completo com exemplos de uso no Claude Desktop e AgentVPS, veja [docs/USAGE_GUIDE.md](docs/USAGE_GUIDE.md).
+
+---
+
+## Sincronização de Dados
+
+Os dados são atualizados via script incremental que consome a API externa de emplacamentos:
+
+```bash
+# Sync incremental (últimos 7 dias — uso diário recomendado)
+python scripts/sync_from_api.py --mode incremental
+
+# Sync completo histórico (uso único na carga inicial)
+python scripts/sync_from_api.py --mode full --date-range 90
+
+# Verificar estado do banco
+python scripts/db_health.py
+```
+
+> Documentação completa da lógica de sync: [docs/DATA_SYNC.md](docs/DATA_SYNC.md)
+
+---
+
+## Dados no Banco
+
+| Tabela | Descrição | Volume estimado |
+|--------|-----------|-----------------|
+| `vehicles` | Veículos com chassi, placa, marca, modelo, ano | ~986k |
+| `empresas` | Proprietários com CNPJ, razão social, endereço, contatos | ~170k |
+| `registrations` | Emplacamentos com data, UF, município, preço | ~1M+ |
+| `marcas` | Lookup de fabricantes | ~30 |
+| `modelos` | Lookup de modelos por marca | ~800 |
+| `enderecos` | Endereços das empresas | ~170k |
+| `contatos` | Telefones e emails das empresas | ~170k |
+| `sync_logs` | Histórico de execuções de sync | - |
+
+---
+
+## Estrutura de Diretórios
+
+```
+fleetintel-mcp/
+├── mcp_server/
+│   └── main.py             # MCP Server com todas as tools
+├── scripts/
+│   ├── sync_from_api.py    # Rotina de sync incremental via API
+│   ├── setup_database.sql  # Schema inicial do PostgreSQL
+│   ├── db_health.py        # Verificação de saúde do banco
+│   └── ...                 # Outros utilitários
+├── src/fleet_intel_mcp/
+│   ├── config.py           # Settings (pydantic-settings)
+│   └── db/connection.py    # Pool de conexão async
+├── infra/
+│   └── cloudflare-tunnel.yml  # Configuração do túnel HTTPS
+├── docker-compose.local.yml   # PostgreSQL + Redis locais
+├── docs/
+│   ├── ARCHITECTURE.md     # Arquitetura detalhada
+│   ├── QUICKSTART.md       # Setup passo a passo
+│   ├── USAGE_GUIDE.md      # Guia de uso com exemplos
+│   └── DATA_SYNC.md        # Documentação do sync de dados
+└── .env.example            # Template de variáveis de ambiente
+```
+
+---
+
+## Variáveis de Ambiente
+
+| Variável | Obrigatória | Descrição |
+|----------|-------------|-----------|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string (`postgresql+asyncpg://...`) |
+| `REDIS_URL` | ✅ | Redis URL (`redis://localhost:6379/1`) |
+| `MCP_AUTH_TOKEN` | Recomendado | Bearer token para autenticação do MCP Server |
+| `MCP_PORT` | Não | Porta do servidor (padrão: `8888`) |
+| `HUBQUEST_API_KEY` | Para sync | Chave da API de dados de emplacamentos |
+| `HUBQUEST_API_URL` | Para sync | URL da API (padrão: configurado no script) |
+| `FLEETINTEL_DB_PASSWORD` | Docker | Senha do PostgreSQL no Docker Compose |
+
+---
+
+## Endpoints MCP
+
+| Método | Path | Descrição |
+|--------|------|-----------|
+| `POST` | `/mcp` | Endpoint principal MCP (Streamable HTTP) |
+
+**Autenticação:**
+```
+Authorization: Bearer <MCP_AUTH_TOKEN>
+Content-Type: application/json
+Accept: application/json, text/event-stream
+```
+
+---
+
+## Licença
+
+MIT — Guilherme Taitson

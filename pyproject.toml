@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "fleetintel-mcp"
 version = "0.1.0"
-description = "Plataforma integrada de inteligencia de frota com MCP server, agente LangGraph e Telegram bot"
+description = "Servidor MCP especializado em inteligência de frota de veículos pesados do Brasil"
 authors = [
     { name = "Guilherme Taitson", email = "guilhermetaitson@gmail.com" }
 ]
@@ -17,27 +17,17 @@ classifiers = [
 ]
 
 dependencies = [
-    "fastapi[standard]>=0.115.0",
     "mcp>=1.0.0",
-    "python-telegram-bot>=20.0.0",
     "pydantic>=2.9.0",
     "pydantic-settings>=2.6.0",
     "httpx>=0.28.0",
     "asyncpg>=0.30.0",
     "redis>=5.2.0",
-    "supabase>=2.11.0",
-    "langgraph>=0.2.70",
-    "langchain>=0.3.14",
-    "langchain-openai>=0.2.14",
-    "langchain-community>=0.3.14",
-    "apscheduler>=3.10.0",
     "python-dotenv>=1.0.0",
     "uvicorn[standard]>=0.32.0",
-    "pandas>=2.1.0",
-    "openpyxl>=3.1.0",
-    "tqdm>=4.66.0",
     "sqlalchemy>=2.0.0",
-    "sentence-transformers>=5.2.2",
+    "psycopg2-binary>=2.9.0",
+    "tqdm>=4.66.0",
 ]
 
 [project.optional-dependencies]
@@ -110,7 +100,7 @@ disallow_untyped_defs = true
 plugins = "pydantic.mypy"
 
 [tool.hatch.build]
-packages = ["mcp_server", "agent", "jobs"]
+packages = ["mcp_server", "src"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["mcp_server", "agent", "jobs"]
+packages = ["mcp_server", "src"]
