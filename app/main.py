@@ -13,7 +13,7 @@ import time
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
@@ -415,7 +415,7 @@ async def root():
             "stats": "GET /stats - Database statistics",
             "vehicles": "POST /vehicles/query - Query vehicles",
             "empresas": "POST /empresas/query - Query empresas",
-            "registrations": "POST /registrations/query - Query registrations"
+            "registrations": "POST /registrations/query - Query registrations",
         },
         "documentation": "/docs - API documentation"
     }

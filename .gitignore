@@ -41,6 +41,9 @@ logs/
 .env.production
 .env.staging
 
+# Agent memory files
+.agent_memory/
+
 # Data files (large files, PII, or processed data)
 data/processed/
 data/raw/

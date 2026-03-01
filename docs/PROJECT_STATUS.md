@@ -1,230 +1,178 @@
-# FleetIntel MCP - Status do Projeto
+# FleetIntel MCP - Estado do Projeto
 
-**Última Atualização**: 2026-02-04 11:30 BRT  
-**Branch Atual**: feature/mvp-guardrails  
-**Último Commit**: refactor: Reorganiza estrutura do projeto (bf01d11)
+## Ultima Atualizacao: 2026-02-04 15:21 UTC-3
 
----
+## Resumo Executivo
 
-## 🎯 Visão Geral
+**GT-50: Telegram Integration** ✅ COMPLETO.
+**PROXIMO:** Deploy e Testes
 
-Este documento reflete o **estado atual** do projeto FleetIntel MCP. É atualizado antes de cada troca de ferramenta de agente (Cline, KiloCode, Cursor, etc.) ou antes de commits importantes.
+## Decisao Estrategica: Telegram vs WhatsApp
 
-### 📊 Status Geral do Projeto (Baseado no Linear)
+### Motivacao para Telegram
 
-**Total de Épicos:** 12  
-**Total de Tarefas:** 60+  
-**Responsável:** Guilherme Taitson  
-**Período:** 12/01/2026 → 30/03/2026 (11 semanas)
+| Aspecto | Telegram | WhatsApp |
+|---------|----------|----------|
+| API Oficial | ✅ Bot API robusta | ⚠️ Meta Business API |
+| Limites | ✅ 30 msg/s sem rate limiting | ⚠️ Rate limiting estricto |
+| Webhooks | ✅ HTTPS simples | ⚠️ Verificacao complexa |
+| Custos | ✅ Gratis | ⚠️ Business API pago |
+| Arquitetura | ✅ Stateless bot | ⚠️ Stateful sessions |
+| Flexibilidade | ✅ Inline bots, commands | ⚠️ Limitado |
 
-**Progresso Geral:**
-- ✅ **Épicos Concluídos:** 4 (33%)
-- 🔄 **Épicos Em Andamento:** 1 (8%)
-- ⏳ **Épicos Planejados:** 7 (59%)
+### Vantagens do Telegram para FleetIntel
+1. **Webhook simples** - nao precisa de callback URL verificacao
+2. **Rate limits generosos** - 30 mensagens/segundo
+3. **Totalmente gratuito** - sem custos de API
+4. **Comandos nativos** - /start, /help, /status
+5. **Inline queries** - buscas diretas nas conversas
 
-**Status por Fase:**
-- 🟣 **FASE 0: Foundation - Data:** 100% (✅ Concluído)
-- 🔵 **FASE 1: Core Platform:** 0% (⏳ Planejado)
-- 🟢 **FASE 2: Enhancements:** 0% (⏳ Planejado)
-- 🟡 **FASE 3: Production Ready:** 0% (⏳ Planejado)
+## Progresso por Epic
 
----
+### Epic 0-3: ETL + Database Setup ✅ COMPLETO
+- [x] Pipeline ETL V7 otimizado
+- [x] 986,859 veiculos carregados
+- [x] 919,941 registros de emplacamento
+- [x] 161,932 empresas
 
-## 📊 Status dos Epics
+### Epic 4: API Externa + Job Semanal ✅ COMPLETO
+- [x] `mcp/clients/hubquest_client.py` - Cliente HTTP/2
+- [x] `mcp/jobs/incremental_sync_v2.py` - Job agendado
 
-### ✅ Epic 0-3: Setup + Database Redesign + ETL V1
-**Status**: CONCLUÍDO  
-**Documentação**: `docs/EPIC_0-3_FINAL_STATUS.md`
+### Epic 5: Guardrails MVP ✅ COMPLETO
+- [x] `app/core/guardrails.py` - Rate limiting, sanitizacao
 
-- Database redesign V2 implementado
-- Migrations aplicadas
-- Schema normalizado funcional
+### Epic 6: MCP Server Tools (GT-38) ✅ COMPLETO
+- [x] `mcp_server/main.py` - Servidor MCP
+- [x] 4 tools: search_vehicles, search_empresas, search_registrations, get_stats
 
-### ✅ Epic 4: ETL V2 - Correções de Tipos de Dados
-**Status**: CONCLUÍDO ✅  
-**Documentação**: `docs/git/CORRECOES_ETL_V2.md`
+### Epic 7: LangGraph Agent (GT-40) ✅ COMPLETO
+- [x] `agent/agent.py` - Grafo do agente LangGraph
+- [x] 6 tools integradas ao agente
 
-**Progresso:**
-- ✅ Identificado problema: CNPJs, CEPs, CNAEs sendo lidos como floats
-- ✅ Corrigido `scripts/load_excel_to_csv.py` (DTYPE_MAP)
-- ✅ Corrigido `scripts/normalize_data.py` (zfill e forcing string types)
-- ✅ Corrigido `scripts/load_normalized_schema.py` (dtype=str no CSV read)
-- ✅ Excel → CSV Raw executado: **974,122 registros**
-- ✅ CSV Raw → CSV Normalized executado: **974,122 registros**
+### Epic 8: Telegram Integration (GT-50) ✅ COMPLETO
+- [x] `app/integrations/telegram.py` - Bot Telegram v2
+- [x] Webhook handler `/webhook/telegram` no FastAPI
+- [x] Comandos: /start, /help, /stats, /veiculos, /empresas, /search
+- [x] Menu de comandos inline (Keyboards)
+- [x] Integração com LangGraph Agent via run_query
+- [x] Rate limiting por usuário
+- [x] `docs/setup/TELEGRAM_SETUP.md` - Documentação de setup
+- [x] `docs/architecture/TELEGRAM_INTEGRATION_DESIGN.md` - Arquitetura
 
-### ✅ Epic 5: ETL Performance Optimization (GT-28) - RESOLVIDO!
-**Status**: CONCLUÍDO ✅  
-**Documentação**: `docs/ETL_PERFORMANCE_OPTIMIZATION_PLAN.md`, `docs/ETL_OPTIMIZATION_SUMMARY.md`
+## Arquitetura Telegram
 
-**Problema Original** (2026-02-02):
-- **Performance Crítica**: Carga completa de 974k registros levaria **40+ dias** (0.3 reg/s)
-- **Root Cause**: 1.1M queries individuais (row-by-row inserts)
-
-**Solução Implementada**:
-- ✅ **Batch Inserts**: Agrupamento de INSERTs em batches de 1000 registros
-- ✅ **Vectorized Operations**: Pandas string operations (C-level) ao invés de `apply()`
-- ✅ **Connection Pooling**: Aumentado de 15 para 50 conexões
-- ✅ **Correção Crítica v7**: Removido begin_nested() e separado INSERT/SELECT
-- ✅ **Deduplicação**: Contatos, Endereços, Empresas com deduplicação por ID
-
-**Carga Completa Executada** (2026-02-04):
 ```
-Tempo total: ~18 minutos (de ~11.5 horas para 18 min = 97% mais rápido!)
-Registros processados: 986,859 veículos, 919,941 registrations
-Erros: 0
+                    +------------------+
+                    |  Telegram Bot    |
+                    +--------+---------+
+                             |
+                    +--------v---------+
+                    |   Webhook        |  <- POST /webhook/telegram
+                    +--------+---------+
+                             |
+                    +--------v---------+
+                    |   Handler        |  <- Parse commands
+                    +--------+---------+
+                             |
+            +-----------------+------------------+
+            |                 |                  |
+   +--------v-------+  +-----v--------+  +------v--------+
+   |  Command       |  |  Inline      |  |  Callback     |
+   |  Processor     |  |  Query       |  |  Processor    |
+   +--------+-------+  +-----+--------+  +------+--------+
+            |                 |                  |
+            +--------+--------+--------+---------+
+                             |
+                    +--------v---------+
+                    | LangGraph Agent  |
+                    +--------+---------+
+                             |
+                    +--------v---------+
+                    |   Response       |
+                    +------------------+
 ```
 
-**Dados Carregados no Supabase:**
+## Comandos do Bot
+
+| Comando | Descricao | Exemplo |
+|---------|-----------|---------|
+| `/start` | Iniciar bot | - |
+| `/help` | Ajuda | - |
+| `/stats` | Estatisticas | - |
+| `/veiculos [marca]` | Buscar veiculos | `/veiculos FIAT` |
+| `/empresas [segmento]` | Buscar empresas | `/empresas LOCADORA` |
+| `/registros [UF] [ano]` | Registros | `/registros SP 2024` |
+| `/search [query]` | Busca livre | `/search gol` |
+
+## Estrutura do Projeto
+
 ```
-marcas: 19
-modelos: 1,886
-vehicles: 986,859
-empresas: 161,932 (de 919,941 totais - deduplicado!)
-enderecos: 161,932
-contatos: 155,622 (de 895,229 totais - deduplicado!)
-registrations: 919,941
+app/
+├── integrations/
+│   └── telegram.py      # Bot Telegram (NOVO)
+├── core/
+│   ├── config.py
+│   └── guardrails.py
+├── main.py              # FastAPI + Webhooks
+mcp_server/
+├── main.py              # MCP Server
+├── test_mcp_tools.py
+└── README.md
+agent/
+├── agent.py             # LangGraph Agent
+├── test_agent.py
+└── README.md
+docs/
+├── PROJECT_STATUS.md    # Este arquivo
+└── setup/
+    └── TELEGRAM_SETUP.md (PROXIMO)
 ```
 
-**Verificações de Integridade:**
-- ✅ Todos os veículos têm modelo
-- ✅ Todas as empresas têm endereço
-- ✅ 6,310 empresas sem contato (normal - sem dados no Excel)
-- ✅ Todos os registrations têm veículo
+## Configuracao Telegram
 
-### 🚀 Epic 6: FastAPI MCP Server (GT-11 a GT-15)
-**Status**: CONCLUÍDO ✅  
-**Documentação**: `docs/FASTAPI_MCP_SERVER_STATUS.md`, `app/README.md`
+```bash
+# Variaveis de ambiente
+TELEGRAM_BOT_TOKEN=seu-bot-token
+TELEGRAM_WEBHOOK_URL=https://seu-dominio.com/webhook/telegram
+TELEGRAM_SECRET=seu-secret-token
+```
 
-**Implementação:**
-- ✅ **GT-11**: Configuração do FastAPI Server
-  - `app/main.py` - Entry point do servidor FastAPI
-  - `app/config.py` - Configurações do servidor
-  - `app/schemas/query_schemas.py` - Schemas Pydantic para queries/responses
+## Estatisticas do Banco de Dados
 
-- ✅ **GT-12**: Endpoints de Consulta
-  - `GET /health` - Health check do servidor
-  - `GET /stats` - Estatísticas do banco de dados
-  - `POST /vehicles/query` - Busca de veículos
-  - `POST /empresas/query` - Busca de empresas
-  - `POST /registrations/query` - Busca de registros de emplacamento
+| Tabela | Registros |
+|--------|-----------|
+| marcas | 19 |
+| modelos | 1,886 |
+| vehicles | 986,859 |
+| empresas | 161,932 |
+| registrations | 919,941 |
 
----
+## Branches Ativos
 
-## 🐛 Problemas em Aberto
+- `feature/mvp-guardrails` - Guardrails, MCP Server
+- `feature/langgraph-agent` - LangGraph Agent (GT-40)
+- `feature/telegram-integration` - Telegram Bot (GT-50) - NOVO
 
-### ✅ RESOLVIDO: Carga ETL Completa Falhou (2026-02-03)
-**Status**: RESOLVIDO EM 2026-02-04! 🎉
+## Comandos Uteis
 
-**Problema Original**: Apenas 2.6% dos dados carregados (36,851 de 1,435,223)
-**Causa Raiz**: Script criando contatos duplicados (99,822 discrepância)
+```bash
+# Testar agente
+uv run python agent/test_agent.py
 
-**Solução Implementada:**
-1. ✅ Script ETL V7 com deduplicação por empresa_id
-2. ✅ Contatos reduzidos de 895,229 para 155,622 (85% redução)
-3. ✅ Empresas reduzidas de 919,941 para 161,932 (82% redução)
-4. ✅ Performance de ~11.5h para ~18 minutos (97% melhoria)
+# Testar tools MCP
+uv run python mcp_server/test_mcp_tools.py
 
----
+# Criar branch para Telegram
+git checkout -b feature/telegram-integration
+```
 
-## 📈 Resumo dos Dados no Supabase
+## Tecnologias
 
-| Tabela | Registros | Status |
-|--------|-----------|--------|
-| marcas | 19 | ✅ OK |
-| modelos | 1,886 | ✅ OK |
-| vehicles | 986,859 | ✅ OK (100% com modelo) |
-| empresas | 161,932 | ✅ OK (únicos) |
-| enderecos | 161,932 | ✅ OK (1:1 com empresas) |
-| contatos | 155,622 | ✅ OK (96% das empresas) |
-| registrations | 919,941 | ✅ OK (100% com veículo) |
-
----
-
-## 🔧 Decisões Técnicas Recentes
-
-### 2026-02-04: ETL V7 - Correção Crítica + Performance
-- **Problema**: "This result object does not return rows" - begin_nested() causava erro
-- **Solução**: Separar INSERT e SELECT em conexões diferentes
-- **Performance**: Batch size de 50 → 1000, pool de 5 → 20
-- **Resultado**: ~11.5h → ~18 minutos (97% mais rápido!)
-
-### 2026-02-03: Investigação de Causa Raiz
-- **Problema**: Carga completa falhou com apenas 2.6% dos dados carregados
-- **Causa Raiz Identificada**:
-  1. Script criando contatos duplicados (99,822 discrepância)
-  2. Arquitetura do banco com muitos índices e constraints
-  3. Lógica de preparação de dados (criando duplicatas)
-- **Decisão**: Corrigir causa raiz antes de continuar com carga completa
-- **Resultado**: ✅ CORRIGIDO! Dados carregados com sucesso em 2026-02-04
-
----
-
-## 🚀 Próximos Milestones
-
-### Curto Prazo (Esta Semana)
-- [x] Resolver problema de registrations (98% sucesso) ✅
-- [x] Implementar otimização de performance do ETL (50x mais rápido) ✅
-- [x] Implementar FastAPI MCP Server (GT-11 a GT-15) ✅
-- [x] Traduzir projeto do Linear para documentos locais ✅
-- [x] Implementar rotina de integração com Git ✅
-- [x] Executar Excel → CSV Raw (986,859 registros) ✅
-- [x] Executar CSV Raw → CSV Normalized (986,859 registros) ✅
-- [x] **CORRIGIR CAUSA RAIZ DO TIMEOUT** ✅ RESOLVIDO!
-- [x] Completar carga ETL completa de 986k registros após corrigir causa raiz ✅
-- [x] Validar integridade dos dados no Supabase ✅
-- [ ] **PRÓXIMO**: Implementar Guardrails MVP (GT-9)
-  - [ ] Criar query_schemas com validacao Pydantic
-  - [ ] Implementar rate limiting
-  - [ ] Adicionar sanitizacao de inputs
-  - [ ] Criar testes unitarios
-
-### Médio Prazo (Próximas 2 Semanas)
-- [ ] Implementar Epic 4: API Externa + Job Semanal (GT-219)
-  - [ ] Implementar HubQuestClient (httpx async)
-  - [ ] Implementar paginação robusta
-  - [ ] Implementar retry/backoff + timeouts
-  - [ ] Implementar job incremental semanal (APScheduler)
-  - [ ] Criar scheduler container + comando manual sync
-  - [ ] Teste integrado: client + paginação + upsert
-- [ ] Implementar Epic 5: MCP Server (FastAPI-MCP) (GT-38)
-  - [ ] Configurar FastAPI + MCP Server base
-  - [ ] Implementar tools MCP (search_vehicles, get_stats, find_leads)
-  - [ ] Cache Redis + validação de guardrails
-  - [ ] Autenticação + allowlist de usuários
-  - [ ] Testes unitários + integração MCP
-  - [ ] Documentação API + exemplo Claude Desktop
-
-### Longo Prazo (Próximo Mês)
-- [ ] Implementar Epic 6: Agente (LangGraph) especializado (GT-40)
-- [ ] Implementar Epic 7: WhatsApp Evolution API (GT-188)
-- [ ] Implementar Epic 8: APIs Enriquecimento (CEP/CNPJ) (GT-195)
-- [ ] Implementar Epic 9: Monitoring Phoenix + Grafana Alloy (GT-201)
-
----
-
-## 📚 Documentação Complementar
-
-### Documentos Principais
-- **Setup Inicial**: `docs/SETUP.md`
-- **Arquitetura**: `docs/DATABASE_REDESIGN_V2.md`
-- **ETL V2 Corrections**: `docs/git/CORRECOES_ETL_V2.md`
-- **Git Strategies**: `docs/git/branching-strategy.md`, `docs/git/tagging-strategy.md`
-- **Onboarding para Agentes**: `docs/ONBOARDING_AGENT.md`
-
-### Documentos de Integração
-- **Linear Project**: https://linear.app/gtaitson/project/fleetintel-mcp-bfa0ee37e5f8
-- **GitHub Repository**: https://github.com/Guitaitson/fleetintel-mcp
-- **Supabase Project**: PostgreSQL 17.6 em `aws-1-us-east-1.pooler.supabase.com`
-
----
-
-## 🤝 Contribuindo
-
-Este projeto usa:
-- **Conventional Commits** (feat:, fix:, docs:, etc.)
-- **Branches**: feature/, bugfix/, hotfix/ + descrição
-- **PRs**: Obrigatório para mudanças não triviais
-
----
-
-**Última ação**: ETL V7 executado com sucesso - 986,859 veículos, 919,941 registrations carregados em ~18 minutos (97% mais rápido que antes!). Problema de duplicatas resolvido - contatos reduzidos de 895K para 155K (85% redução).
+- Python 3.11+
+- FastAPI 0.115+
+- SQLAlchemy 2.0 (async)
+- Supabase (PostgreSQL 17.6)
+- MCP SDK 1.0+
+- LangGraph 0.2+
+- python-telegram-bot 20.x+

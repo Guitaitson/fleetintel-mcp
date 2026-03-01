@@ -7,7 +7,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 from fastapi import HTTPException, Request, Depends
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from collections import defaultdict
 import hashlib
 
@@ -280,16 +280,18 @@ class GuardrailedVehicleQuery(BaseModel):
     ano_modelo_max: Optional[int] = Field(None, ge=1980, le=2030)
     limit: int = Field(100, ge=1, le=MAX_RESULTS_LIMIT)
     
-    @validator('chassi', 'placa', pre=True, always=True)
+    @field_validator('chassi', 'placa')
+    @classmethod
     def sanitize_chassi_placa(cls, v):
         if v:
             return InputSanitizer.sanitize_string(v, 'chassi/placa')
         return v
     
-    @validator('marca', 'modelo', pre=True, always=True)
-    def sanitize_text_fields(cls, v, field):
+    @field_validator('marca', 'modelo')
+    @classmethod
+    def sanitize_text_fields(cls, v, info):
         if v:
-            return InputSanitizer.sanitize_string(v, field.name)
+            return InputSanitizer.sanitize_string(v, info.field_name)
         return v
 
 
@@ -305,7 +307,8 @@ class GuardrailedRegistrationQuery(BaseModel):
     modelo: Optional[str] = Field(None, max_length=50)
     limit: int = Field(100, ge=1, le=MAX_RESULTS_LIMIT)
     
-    @validator('uf_emplacamento', pre=True, always=True)
+    @field_validator('uf_emplacamento')
+    @classmethod
     def validate_uf(cls, v):
         if not v:
             raise HTTPException(
@@ -314,13 +317,15 @@ class GuardrailedRegistrationQuery(BaseModel):
             )
         return InputSanitizer.sanitize_uf(v)
     
-    @validator('municipio_emplacamento', 'chassi', 'placa', 'marca', 'modelo', pre=True, always=True)
-    def sanitize_fields(cls, v, field):
+    @field_validator('municipio_emplacamento', 'chassi', 'placa', 'marca', 'modelo')
+    @classmethod
+    def sanitize_fields(cls, v, info):
         if v:
-            return InputSanitizer.sanitize_string(v, field.name)
+            return InputSanitizer.sanitize_string(v, info.field_name)
         return v
     
-    @validator('data_emplacamento_inicio', 'data_emplacamento_fim', pre=True, always=True)
+    @field_validator('data_emplacamento_inicio', 'data_emplacamento_fim')
+    @classmethod
     def validate_dates(cls, v):
         if v:
             try:
@@ -342,16 +347,18 @@ class GuardrailedEmpresaQuery(BaseModel):
     grupo_locadora: Optional[str] = Field(None, max_length=50)
     limit: int = Field(100, ge=1, le=MAX_RESULTS_LIMIT)
     
-    @validator('cnpj', pre=True, always=True)
+    @field_validator('cnpj')
+    @classmethod
     def validate_cnpj(cls, v):
         if v:
             return InputSanitizer.sanitize_cnpj(v)
         return v
     
-    @validator('razao_social', 'nome_fantasia', 'segmento_cliente', 'grupo_locadora', pre=True, always=True)
-    def sanitize_text_fields(cls, v, field):
+    @field_validator('razao_social', 'nome_fantasia', 'segmento_cliente', 'grupo_locadora')
+    @classmethod
+    def sanitize_text_fields(cls, v, info):
         if v:
-            return InputSanitizer.sanitize_string(v, field.name)
+            return InputSanitizer.sanitize_string(v, info.field_name)
         return v
 
 

@@ -2,22 +2,46 @@
 # FLEETINTEL MCP - DOCKER COMPOSE LOCAL DEVELOPMENT
 # ==============================================================================
 #
-# Este docker-compose é para ambiente LOCAL de desenvolvimento.
-# Para produção, use configurações diferentes.
-#
-# SERVIÇOS:
-# - redis: Cache e filas
-# - redis-commander: UI para debug do Redis (opcional)
+# SERVICOS:
+# - postgres: Banco FleetIntel (porta 5432)
+# - redis: Cache (porta 6379)
+# - redis-commander: UI Redis debug (porta 8081, opcional)
 #
 # USO:
-# docker-compose -f docker-compose.local.yml up -d
-# docker-compose -f docker-compose.local.yml down
+# docker compose -f docker-compose.local.yml up -d
+# docker compose -f docker-compose.local.yml down
+#
+# VARIAVEIS REQUERIDAS NO .env:
+# FLEETINTEL_DB_PASSWORD=senha-segura-aqui
 #
 # ==============================================================================
 
-version: '3.9'
-
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fleetintel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fleetintel
+      POSTGRES_USER: fleetintel
+      POSTGRES_PASSWORD: ${FLEETINTEL_DB_PASSWORD:-fleetintel_dev}
+    volumes:
+      - fleetintel-pgdata:/var/lib/postgresql/data
+      - ./scripts/setup_database.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - fleetintel-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleetintel -d fleetintel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      com.fleetintel.project: "fleetintel-mcp"
+      com.fleetintel.environment: "development"
+
   redis:
     image: redis:7-alpine
     container_name: fleetintel-redis
@@ -60,5 +84,8 @@ networks:
     driver: bridge
 
 volumes:
+  fleetintel-pgdata:
+    name: fleetintel-pgdata
+    driver: local
   redis-data:
     driver: local

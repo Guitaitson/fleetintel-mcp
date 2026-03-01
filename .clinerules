@@ -1,4 +1,18 @@
-# FleetIntel MCP - AI Agent Context
+---
+description: Regras do projeto FleetIntel MCP - herda regras globais
+author: OpenClaw
+version: 1.1
+category: "Project"
+tags: ["fleetintel", "mcp", "fastapi", "supabase", "python"]
+globs: ["**/*"]
+---
+
+# 🚛 FleetIntel MCP - Regras do Projeto
+
+Este projeto herda as regras globais definidas em `../.clinerules`.
+
+**LER** o arquivo `../AGENTS.md` para contexto global do workspace.
+
 
 ## Stack Tecnológica
 - **Backend**: Python 3.12+ com FastAPI
